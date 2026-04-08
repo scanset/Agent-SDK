@@ -19,13 +19,13 @@ vendored-openssl = ["openssl/vendored"]
 # ============================================================================
 # ESP Engine
 # ============================================================================
-common = { git = "https://github.com/CurtisSlone/Endpoint-State-Policy", tag = "v1.2.0", features = [
+common = { git = "https://github.com/CurtisSlone/Endpoint-State-Policy", tag = "v1.2.1", features = [
     "full-results",
     "attestation",
     "assessor-evidence",
 ] }
-compiler = { git = "https://github.com/CurtisSlone/Endpoint-State-Policy", tag = "v1.2.0" }
-execution_engine = { git = "https://github.com/CurtisSlone/Endpoint-State-Policy", tag = "v1.2.0" }
+compiler = { git = "https://github.com/CurtisSlone/Endpoint-State-Policy", tag = "v1.2.1" }
+execution_engine = { git = "https://github.com/CurtisSlone/Endpoint-State-Policy", tag = "v1.2.1" }
 
 # ============================================================================
 # Serialization
