@@ -1,0 +1,99 @@
+# KSI-SCR-MIT / KSI-CNA-MAT: Rocky 9 GPG Verification and Prohibited Packages
+# STIG: SV-257820 (HIGH) - gpgcheck=1 in dnf.conf
+#       SV-257821 (HIGH) - localpkg_gpgcheck=1 in dnf.conf
+#       SV-257822 (HIGH) - gpgcheck=1 in all yum.repos.d/*.repo files
+#       SV-257826 (HIGH) - vsftpd must not be installed
+#       SV-257835 (HIGH) - tftp-server must not be installed
+
+META
+    esp_id `ksi-scr-mit-cna-mat-r9-gpg-packages-001`
+    version `1.0.0`
+    dsl_schema_version `1.0.0`
+    platform `rocky9`
+    criticality `critical`
+
+    title `KSI-SCR-MIT / KSI-CNA-MAT: Rocky 9 GPG Verification and Prohibited Packages`
+    description `Validates GPG signature verification is enforced for all package sources and that FTP and TFTP server packages are not installed`
+    author `scanset-security`
+    tags `rocky9,stig,gpg,rpm,packages,fedramp,KSI-SCR-MIT,KSI-CNA-MAT`
+
+    control_mapping `KSI:KSI-SCR-MIT,KSI:KSI-CNA-MAT`
+    control_objective `KSI-SCR-MIT,KSI-CNA-MAT`
+
+    assessment_method `TEST`
+    implementation_status `implemented`
+    responsible_role `system-admin`
+
+    control_origination `sp-system`
+    inherited_from `Rocky9:localhost:package-management`
+    customer_responsibility `configuration`
+
+    remediation_days `3`
+    recommendation `Set gpgcheck=1 and localpkg_gpgcheck=1 in /etc/dnf/dnf.conf. Ensure all .repo files in /etc/yum.repos.d/ have gpgcheck=1. Remove vsftpd and tftp-server if installed.`
+
+    component_id `comp-r9-packages`
+
+    impl_KSI_SCR_MIT `Supply chain integrity for software packages is validated by confirming GPG signature verification is enforced at three layers. The dnf global configuration is validated to have gpgcheck=1 for packages from external repositories (SV-257820) and localpkg_gpgcheck=1 for locally installed packages (SV-257821), ensuring no package can bypass signature verification regardless of source. All configured yum repositories are validated to have gpgcheck=1 set, confirming no individual repository has disabled the global enforcement (SV-257822). Together these three controls ensure every package installed on the system has been verified against a trusted GPG key.`
+
+    impl_KSI_CNA_MAT `Attack surface reduction is validated by confirming the FTP server package (vsftpd) and TFTP server package (tftp-server) are not installed. FTP transmits credentials in cleartext and has no place on a FedRAMP-authorized system. TFTP has no authentication mechanism at all. Both represent prohibited services under the Ports, Protocols, and Services Management requirements. The rpm_package contract validates non-installation via rpm -q exit code rather than checking process state, ensuring the packages cannot be started even transiently.`
+
+META_END
+
+DEF
+    OBJECT dnf_conf
+        path `/etc/dnf/dnf.conf`
+    OBJECT_END
+
+    OBJECT vsftpd_pkg
+        package_name `vsftpd`
+    OBJECT_END
+
+    OBJECT tftp_pkg
+        package_name `tftp-server`
+    OBJECT_END
+
+    # dnf.conf must have gpgcheck=1
+    STATE dnf_gpgcheck_enabled
+        content string contains `gpgcheck=1`
+    STATE_END
+
+    # dnf.conf must have localpkg_gpgcheck=1
+    STATE dnf_localpkg_gpgcheck_enabled
+        content string contains `localpkg_gpgcheck=1`
+    STATE_END
+
+    # Prohibited packages must not be installed
+    STATE not_installed
+        installed boolean = false
+    STATE_END
+
+    CRI AND
+        # GPG check for external repos
+        CTN file_content
+            TEST all all AND
+            STATE_REF dnf_gpgcheck_enabled
+            OBJECT_REF dnf_conf
+        CTN_END
+
+        # GPG check for local packages
+        CTN file_content
+            TEST all all AND
+            STATE_REF dnf_localpkg_gpgcheck_enabled
+            OBJECT_REF dnf_conf
+        CTN_END
+
+        # FTP server not installed
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF not_installed
+            OBJECT_REF vsftpd_pkg
+        CTN_END
+
+        # TFTP server not installed
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF not_installed
+            OBJECT_REF tftp_pkg
+        CTN_END
+    CRI_END
+DEF_END

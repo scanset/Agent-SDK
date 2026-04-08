@@ -1,0 +1,77 @@
+# KSI-AFR-UCM: Rocky 9 FIPS Mode and Cryptographic Policy
+# STIG: SV-258230 (HIGH) - FIPS mode must be enabled
+#       SV-258236 (HIGH) - crypto policy must not be overridden
+# Check: fips-mode-setup --check -> FIPS mode is enabled
+#        update-crypto-policies --check && echo PASS -> PASS
+#        ls /etc/crypto-policies/back-ends/ -> all symlink to FIPS/
+
+META
+    esp_id `ksi-afr-ucm-r9-fips-crypto-001`
+    version `1.0.0`
+    dsl_schema_version `1.0.0`
+    platform `rocky9`
+    criticality `critical`
+
+    title `KSI-AFR-UCM: Rocky 9 FIPS Mode and Cryptographic Policy`
+    description `Validates FIPS 140-3 mode is enabled system-wide and the cryptographic policy has not been overridden, ensuring all cryptographic operations use FIPS-validated algorithms`
+    author `scanset-security`
+    tags `rocky9,stig,fips,crypto-policy,fedramp,KSI-AFR-UCM`
+
+    control_mapping `KSI:KSI-AFR-UCM`
+    control_objective `KSI-AFR-UCM`
+
+    assessment_method `TEST`
+    implementation_status `implemented`
+    responsible_role `system-admin`
+
+    control_origination `sp-system`
+    inherited_from `Rocky9:localhost:fips-hardening`
+    customer_responsibility `configuration`
+
+    remediation_days `7`
+    recommendation `Enable FIPS mode with fips-mode-setup --enable and reboot. Set crypto policy to FIPS with update-crypto-policies --set FIPS. Do not use update-crypto-policies --set with subpolicies that override FIPS (e.g. FIPS:NO-SHA1).`
+
+    component_id `comp-r9-crypto`
+
+    impl_KSI_AFR_UCM `Use of cryptographic modules is validated at two levels. FIPS 140-3 mode enablement is validated by confirming fips-mode-setup --check reports FIPS mode is enabled and the kernel FIPS flag at /proc/sys/crypto/fips_enabled is set to 1. FIPS mode enforces that all cryptographic operations - including TLS, SSH, disk encryption, and kernel operations - use only FIPS 140-3 validated algorithms and key sizes. Cryptographic policy integrity is validated by confirming update-crypto-policies --check reports PASS (configured policy matches generated policy with no per-application overrides) and all backend symlinks in /etc/crypto-policies/back-ends/ point to the FIPS policy directory. Per-application crypto policy overrides are explicitly prohibited because they can silently downgrade individual services to non-FIPS algorithms while the system appears FIPS-compliant at the global level.`
+
+META_END
+
+DEF
+    OBJECT fips_check
+        check_kernel `true`
+    OBJECT_END
+
+    OBJECT crypto_check
+        expected_policy `FIPS`
+    OBJECT_END
+
+    # FIPS mode must be enabled at runtime and kernel level
+    STATE fips_enabled
+        tool_available boolean = true
+        enabled boolean = true
+        kernel_fips_enabled boolean = true
+    STATE_END
+
+    # Crypto policy must match and point to FIPS
+    STATE fips_crypto_policy
+        tool_available boolean = true
+        policy_matches boolean = true
+        current_policy string = `FIPS`
+        backends_point_to_policy boolean = true
+    STATE_END
+
+    CRI AND
+        CTN fips_mode
+            TEST all all AND
+            STATE_REF fips_enabled
+            OBJECT_REF fips_check
+        CTN_END
+
+        CTN crypto_policy
+            TEST all all AND
+            STATE_REF fips_crypto_policy
+            OBJECT_REF crypto_check
+        CTN_END
+    CRI_END
+DEF_END

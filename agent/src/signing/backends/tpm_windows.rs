@@ -185,18 +185,14 @@ impl TpmBackend {
 }
 
 impl SigningBackend for TpmBackend {
-    fn sign_envelope_hashes(
-        &self,
-        content_hash: &str,
-        evidence_hash: &str,
-    ) -> SigningResult<SignatureBlock> {
+    fn sign_envelope_hash(&self, replay_hash: &str) -> SigningResult<SignatureBlock> {
         let inner = self
             .inner
             .lock()
             .map_err(|e| SigningError::SigningFailed(format!("Lock poisoned: {}", e)))?;
 
-        // Compute the data to sign: SHA256(content_hash || evidence_hash)
-        let signed_data = compute_signed_data(content_hash, evidence_hash);
+        // Compute the data to sign: SHA256(replay_hash)
+        let signed_data = compute_signed_data(replay_hash);
 
         // Sign with TPM
         let signature_bytes = unsafe {

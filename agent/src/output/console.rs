@@ -2,7 +2,7 @@
 //!
 //! Provides formatted console output for scan results.
 
-use contract_kit::execution_api::ScanResult;
+use crate::contract_kit::execution_api::ScanResult;
 
 /// Print scan results to console in a human-readable format
 pub fn print_results(scan_results: &[ScanResult]) {

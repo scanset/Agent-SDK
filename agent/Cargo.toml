@@ -1,35 +1,122 @@
 [package]
 name = "agent"
-version.workspace = true
-edition.workspace = true
-authors.workspace = true
-license.workspace = true
-repository.workspace = true
-homepage.workspace = true
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.92"
+authors = ["Curtis Slone"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/scanset/ESP-Agent-SDK"
+homepage = "https://github.com/scanset/ESP-Agent-SDK"
 description = "ESP Agent CLI"
 
+[features]
+default = []
+# Vendor OpenSSL statically — required for musl static builds (x86_64-unknown-linux-musl).
+# Usage: cargo build --target x86_64-unknown-linux-musl --features vendored-openssl
+vendored-openssl = ["openssl/vendored"]
+
 [dependencies]
-common = { workspace = true, features = [
+# ============================================================================
+# ESP Engine
+# ============================================================================
+common = { git = "https://github.com/CurtisSlone/Endpoint-State-Policy", tag = "v1.2.0", features = [
     "full-results",
     "attestation",
     "assessor-evidence",
 ] }
-contract_kit.workspace = true
-serde_json.workspace = true
+compiler = { git = "https://github.com/CurtisSlone/Endpoint-State-Policy", tag = "v1.2.0" }
+execution_engine = { git = "https://github.com/CurtisSlone/Endpoint-State-Policy", tag = "v1.2.0" }
 
-# Signature and cryptography libraries
+# ============================================================================
+# Serialization
+# ============================================================================
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# ============================================================================
+# CLI
+# ============================================================================
+clap = { version = "4.4", features = ["derive"] }
+num_cpus = "1.16"
+
+# ============================================================================
+# Logging
+# ============================================================================
+log = "0.4"
+env_logger = "0.11"
+
+# ============================================================================
+# Cryptography and signing
+# ============================================================================
 p256 = { version = "0.13", features = ["ecdsa"] }
 rand_core = "0.6"
 hex = "0.4"
-log = "0.4"
-uuid = { version = "1", features = ["v4"] }
 sha2 = "0.10"
 base64 = "0.22"
 
-[target.'cfg(windows)'.dependencies]
-windows = { version = "0.58", features = ["Win32_Security_Cryptography"] }
+# ============================================================================
+# Utilities
+# ============================================================================
+uuid = { version = "1.0", features = ["v4", "serde"] }
 
+[target.'cfg(not(windows))'.dependencies]
+# OpenSSL is required by the common crate on non-Windows.
+# Listed here so the vendored-openssl feature can control static linking for musl builds.
+openssl = { version = "0.10", optional = true }
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.58", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Security_Authorization",
+    "Win32_Storage_FileSystem",
+    "Win32_NetworkManagement_IpHelper",
+    "Win32_Networking_WinSock",
+    "Win32_Security_Cryptography",
+] }
 
 [[bin]]
 name = "esp_agent"
 path = "src/main.rs"
+
+# ============================================================================
+# Build profiles
+# ============================================================================
+
+[profile.dev]
+opt-level = 0
+debug = true
+split-debuginfo = "unpacked"
+debug-assertions = true
+overflow-checks = true
+incremental = true
+
+[profile.release]
+opt-level = 3
+debug = false
+split-debuginfo = "off"
+debug-assertions = false
+overflow-checks = false
+lto = "thin"
+incremental = false
+codegen-units = 16
+strip = "symbols"
+
+[profile.release-with-debug]
+inherits = "release"
+debug = true
+strip = "none"
+
+[profile.test]
+opt-level = 1
+debug = true
+debug-assertions = true
+overflow-checks = true
+
+[profile.security]
+inherits = "release"
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"

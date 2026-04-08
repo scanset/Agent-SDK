@@ -1,0 +1,72 @@
+# KSI-CNA-IBP: Rocky 9 SELinux Enforcing
+# STIG: SV-258078 (HIGH) - SELinux must be enforcing at runtime and in config
+# Check: getenforce -> Enforcing
+#        grep SELINUX= /etc/selinux/config -> SELINUX=enforcing
+
+META
+    esp_id `ksi-cna-ibp-r9-selinux-001`
+    version `1.0.0`
+    dsl_schema_version `1.0.0`
+    platform `rocky9`
+    criticality `critical`
+
+    title `KSI-CNA-IBP: Rocky 9 SELinux Enforcing`
+    description `Validates SELinux is set to Enforcing at both runtime and in the persistent configuration file, ensuring the Linux Security Module is active and will survive a reboot`
+    author `scanset-security`
+    tags `rocky9,stig,selinux,lsm,fedramp,KSI-CNA-IBP`
+
+    control_mapping `KSI:KSI-CNA-IBP`
+    control_objective `KSI-CNA-IBP`
+
+    assessment_method `TEST`
+    implementation_status `implemented`
+    responsible_role `system-admin`
+
+    control_origination `sp-system`
+    inherited_from `Rocky9:localhost:selinux`
+    customer_responsibility `configuration`
+
+    remediation_days `1`
+    recommendation `Set SELINUX=enforcing in /etc/selinux/config. Reboot to apply. Confirm getenforce returns Enforcing after reboot.`
+
+    component_id `comp-r9-selinux`
+
+    impl_KSI_CNA_IBP `Isolation boundary protection is validated by confirming SELinux is operating in Enforcing mode at two levels. The runtime state is validated via the computed_values contract reading /sys/fs/selinux/enforce (value 1 = Enforcing), confirming the Linux Security Module is actively enforcing mandatory access control policies on all running system services. The persistent configuration is validated by confirming SELINUX=enforcing is set in /etc/selinux/config, ensuring Enforcing mode will be restored after a reboot and cannot be bypassed by an attacker who induces a restart. Both checks are required - a system could have Enforcing active at runtime but Permissive in config, meaning a reboot would silently downgrade the security posture.`
+
+META_END
+
+DEF
+    OBJECT selinux_config
+        path `/etc/selinux/config`
+    OBJECT_END
+
+    OBJECT selinux_enforce
+        path `/sys/fs/selinux/enforce`
+    OBJECT_END
+
+    # Runtime: SELinux must be enforcing (value = 1)
+    STATE selinux_enforcing_runtime
+        content string = `1`
+    STATE_END
+
+    # Config: SELINUX=enforcing must be set
+    STATE selinux_enforcing_config
+        content string contains `SELINUX=enforcing`
+    STATE_END
+
+    CRI AND
+        # Runtime enforcement
+        CTN file_content
+            TEST all all AND
+            STATE_REF selinux_enforcing_runtime
+            OBJECT_REF selinux_enforce
+        CTN_END
+
+        # Persistent config
+        CTN file_content
+            TEST all all AND
+            STATE_REF selinux_enforcing_config
+            OBJECT_REF selinux_config
+        CTN_END
+    CRI_END
+DEF_END

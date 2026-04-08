@@ -2,16 +2,14 @@
 //!
 //! Provides cryptographic signing for ESP scan results.
 //! Signatures are embedded in the result envelope and cover
-//! the `content_hash` and `evidence_hash` fields.
+//! the `replay_hash` field.
 //!
 //! ## Architecture
 //!
 //! ```text
 //! ResultEnvelope
-//!   ├── content_hash    ─┐
-//!   ├── evidence_hash   ─┼─► signed_data = SHA256(content_hash || evidence_hash)
-//!   │                    │
-//!   └── signature ◄──────┘
+//!   └── replay_hash ──► signed_data = SHA256(replay_hash)
+//!   └── signature ◄────────────────────────────────────────
 //! ```
 //!
 //! ## Backends
@@ -84,8 +82,8 @@ pub fn create_backend() -> SigningResult<Box<dyn SigningBackend>> {
 
 /// Sign an envelope in place
 ///
-/// Computes a signature over the envelope's `content_hash` and `evidence_hash`,
-/// then sets `envelope.signature` to the resulting `SignatureBlock`.
+/// Computes a signature over `SHA256(replay_hash)` and sets
+/// `envelope.signature` to the resulting `SignatureBlock`.
 ///
 /// # Arguments
 ///
@@ -96,15 +94,14 @@ pub fn create_backend() -> SigningResult<Box<dyn SigningBackend>> {
 ///
 /// ```ignore
 /// let backend = create_backend()?;
-/// let mut result = build_full_result(&scan_results)?;
+/// let mut result = build_full_result(&scan_results, identity_status)?;
 /// sign_envelope(&mut result.envelope, backend.as_ref())?;
 /// ```
 pub fn sign_envelope(
     envelope: &mut ResultEnvelope,
     backend: &dyn SigningBackend,
 ) -> SigningResult<()> {
-    let signature =
-        backend.sign_envelope_hashes(&envelope.content_hash, &envelope.evidence_hash)?;
+    let signature = backend.sign_envelope_hash(&envelope.replay_hash)?;
     envelope.signature = Some(signature);
     Ok(())
 }
@@ -155,8 +152,7 @@ mod tests {
             AgentInfo::with_defaults("test-agent"),
             HostInfo::new("host-1", "testhost", "linux", "x86_64"),
         )
-        .with_content_hash("sha256:8726504ca47412e0d8c0be36a1286a79")
-        .with_evidence_hash("sha256:9fbea98350c00a9642fe91431619dd3a")
+        .with_replay_hash("sha256:8726504ca47412e0d8c0be36a1286a79c3f8e5b72da04b1ea9d3f12c847e6f02")
     }
 
     #[test]
@@ -177,7 +173,7 @@ mod tests {
         assert!(envelope.signature.is_some());
 
         let sig = envelope.signature.as_ref().unwrap();
-        assert_eq!(sig.covers, vec!["content_hash", "evidence_hash"]);
+        assert_eq!(sig.covers, vec!["replay_hash"]);
         assert_eq!(sig.signer_type, "agent");
         assert!(!sig.signature.is_empty());
         assert!(!sig.public_key.is_empty());
@@ -202,8 +198,7 @@ mod tests {
         sign_envelope(&mut envelope, backend.as_ref()).expect("Signing failed");
 
         let sig = envelope.signature.as_ref().unwrap();
-        assert_eq!(sig.covers.len(), 2);
-        assert!(sig.covers.contains(&"content_hash".to_string()));
-        assert!(sig.covers.contains(&"evidence_hash".to_string()));
+        assert_eq!(sig.covers.len(), 1);
+        assert!(sig.covers.contains(&"replay_hash".to_string()));
     }
 }

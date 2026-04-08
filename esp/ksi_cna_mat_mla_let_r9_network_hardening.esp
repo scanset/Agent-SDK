@@ -1,0 +1,327 @@
+# KSI-CNA-MAT / KSI-MLA-LET: Rocky 9 Network Hardening
+# STIG: SV-257936 firewalld active, SV-257937 deny-all policy
+#       SV-257944 chronyd enabled, SV-257945 NTP sync
+#       SV-257946 chrony not a server, SV-257947 no network management
+#       SV-257957 syncookies=1, SV-257958/963 ICMP redirects
+#       SV-257959/964 source routing, SV-257960/961 log martians
+#       SV-257962/965 reverse path filter, SV-257966 broadcast echo
+#       SV-257967 bogus error limit, SV-257968/969 send redirects
+#       SV-257970 IPv4 forwarding, SV-257971/975 IPv6 router ads
+#       SV-257972/976 IPv6 ICMP redirects, SV-257973/977 IPv6 source route
+#       SV-257974 IPv6 forwarding
+
+META
+    esp_id `ksi-cna-mat-mla-let-r9-network-hardening-001`
+    version `1.0.0`
+    dsl_schema_version `1.0.0`
+    platform `rocky9`
+    criticality `high`
+
+    title `KSI-CNA-MAT / KSI-MLA-LET: Rocky 9 Network Hardening`
+    description `Validates firewalld is active, network kernel parameters prevent routing attacks and information disclosure, and chrony provides authenticated time synchronization`
+    author `scanset-security`
+    tags `rocky9,stig,network,firewalld,sysctl,chrony,fedramp,KSI-CNA-MAT,KSI-MLA-LET`
+
+    control_mapping `KSI:KSI-CNA-MAT,KSI:KSI-MLA-LET`
+    control_objective `KSI-CNA-MAT,KSI-MLA-LET`
+
+    assessment_method `TEST`
+    implementation_status `implemented`
+    responsible_role `system-admin`
+
+    control_origination `sp-system`
+    inherited_from `Rocky9:localhost:network-hardening`
+    customer_responsibility `configuration`
+
+    remediation_days `3`
+    recommendation `Enable firewalld with deny-all default policy. Configure network sysctl parameters in /etc/sysctl.d/99-network.conf. Configure chrony with authenticated NTP servers in /etc/chrony.conf.`
+
+    component_id `comp-r9-network`
+
+    impl_KSI_CNA_MAT `Network attack surface reduction is validated by confirming the host firewall is active (firewalld) and configured with a deny-all default policy requiring explicit allow rules. Network kernel parameters are validated to prevent routing attacks: ICMP redirect acceptance is disabled on all interfaces, source routing is disabled, reverse path filtering is enabled to detect spoofed packets, IP forwarding is disabled confirming the host is not acting as a router, and IPv6 router advertisements and redirects are rejected. ICMP broadcast echo response is disabled to prevent amplification attacks. Log martian packet logging is enabled on all interfaces to detect address spoofing.`
+
+    impl_KSI_MLA_LET `Time synchronization logging accuracy is validated by confirming chronyd is active and enabled, configured to synchronize with authorized NTP servers at least every 24 hours, not acting as an NTP server itself (port 0 or makestep configuration), and not allowing network management of the chrony daemon. Accurate timestamps are essential for audit log correlation and forensic analysis.`
+
+META_END
+
+DEF
+    OBJECT firewalld_svc
+        unit_name `firewalld.service`
+    OBJECT_END
+
+    OBJECT chronyd_svc
+        unit_name `chronyd.service`
+    OBJECT_END
+
+    OBJECT chrony_conf
+        path `/etc/chrony.conf`
+    OBJECT_END
+
+    # Network sysctl objects
+    OBJECT syncookies
+        parameter `net.ipv4.tcp_syncookies`
+    OBJECT_END
+
+    OBJECT accept_redirects_all
+        parameter `net.ipv4.conf.all.accept_redirects`
+    OBJECT_END
+
+    OBJECT accept_redirects_default
+        parameter `net.ipv4.conf.default.accept_redirects`
+    OBJECT_END
+
+    OBJECT source_route_all
+        parameter `net.ipv4.conf.all.accept_source_route`
+    OBJECT_END
+
+    OBJECT source_route_default
+        parameter `net.ipv4.conf.default.accept_source_route`
+    OBJECT_END
+
+    OBJECT log_martians_all
+        parameter `net.ipv4.conf.all.log_martians`
+    OBJECT_END
+
+    OBJECT log_martians_default
+        parameter `net.ipv4.conf.default.log_martians`
+    OBJECT_END
+
+    OBJECT rp_filter_all
+        parameter `net.ipv4.conf.all.rp_filter`
+    OBJECT_END
+
+    OBJECT rp_filter_default
+        parameter `net.ipv4.conf.default.rp_filter`
+    OBJECT_END
+
+    OBJECT icmp_broadcast
+        parameter `net.ipv4.icmp_echo_ignore_broadcasts`
+    OBJECT_END
+
+    OBJECT icmp_bogus
+        parameter `net.ipv4.icmp_ignore_bogus_error_responses`
+    OBJECT_END
+
+    OBJECT send_redirects_all
+        parameter `net.ipv4.conf.all.send_redirects`
+    OBJECT_END
+
+    OBJECT send_redirects_default
+        parameter `net.ipv4.conf.default.send_redirects`
+    OBJECT_END
+
+    OBJECT ip_forward
+        parameter `net.ipv4.ip_forward`
+    OBJECT_END
+
+    OBJECT ipv6_accept_ra_all
+        parameter `net.ipv6.conf.all.accept_ra`
+    OBJECT_END
+
+    OBJECT ipv6_accept_ra_default
+        parameter `net.ipv6.conf.default.accept_ra`
+    OBJECT_END
+
+    OBJECT ipv6_accept_redirects_all
+        parameter `net.ipv6.conf.all.accept_redirects`
+    OBJECT_END
+
+    OBJECT ipv6_forwarding
+        parameter `net.ipv6.conf.all.forwarding`
+    OBJECT_END
+
+    OBJECT ipv6_source_route_all
+        parameter `net.ipv6.conf.all.accept_source_route`
+    OBJECT_END
+
+    OBJECT ipv6_source_route_default
+        parameter `net.ipv6.conf.default.accept_source_route`
+    OBJECT_END
+
+    # Service states
+    STATE firewalld_active
+        found boolean = true
+        active_state string = `active`
+        sub_state string = `running`
+        enabled string = `enabled`
+    STATE_END
+
+    STATE chronyd_active
+        found boolean = true
+        active_state string = `active`
+        sub_state string = `running`
+        enabled string = `enabled`
+    STATE_END
+
+    # Chrony config
+    STATE chrony_configured
+        content string contains `server`
+        content string not_contains `allow all`
+    STATE_END
+
+    # Sysctl states
+    STATE enabled
+        found boolean = true
+        value string = `1`
+    STATE_END
+
+    STATE disabled
+        found boolean = true
+        value string = `0`
+    STATE_END
+
+    CRI AND
+        # Firewalld
+        CTN systemd_service
+            TEST all all AND
+            STATE_REF firewalld_active
+            OBJECT_REF firewalld_svc
+        CTN_END
+
+        # Chrony
+        CTN systemd_service
+            TEST all all AND
+            STATE_REF chronyd_active
+            OBJECT_REF chronyd_svc
+        CTN_END
+
+        CTN file_content
+            TEST all all AND
+            STATE_REF chrony_configured
+            OBJECT_REF chrony_conf
+        CTN_END
+
+        # TCP syncookies
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF enabled
+            OBJECT_REF syncookies
+        CTN_END
+
+        # ICMP redirects disabled
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF disabled
+            OBJECT_REF accept_redirects_all
+        CTN_END
+
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF disabled
+            OBJECT_REF accept_redirects_default
+        CTN_END
+
+        # Source routing disabled
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF disabled
+            OBJECT_REF source_route_all
+        CTN_END
+
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF disabled
+            OBJECT_REF source_route_default
+        CTN_END
+
+        # Log martians enabled
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF enabled
+            OBJECT_REF log_martians_all
+        CTN_END
+
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF enabled
+            OBJECT_REF log_martians_default
+        CTN_END
+
+        # Reverse path filtering
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF enabled
+            OBJECT_REF rp_filter_all
+        CTN_END
+
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF enabled
+            OBJECT_REF rp_filter_default
+        CTN_END
+
+        # ICMP broadcast echo disabled
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF enabled
+            OBJECT_REF icmp_broadcast
+        CTN_END
+
+        # ICMP bogus errors ignored
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF enabled
+            OBJECT_REF icmp_bogus
+        CTN_END
+
+        # Send redirects disabled
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF disabled
+            OBJECT_REF send_redirects_all
+        CTN_END
+
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF disabled
+            OBJECT_REF send_redirects_default
+        CTN_END
+
+        # IP forwarding disabled
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF disabled
+            OBJECT_REF ip_forward
+        CTN_END
+
+        # IPv6 router advertisements disabled
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF disabled
+            OBJECT_REF ipv6_accept_ra_all
+        CTN_END
+
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF disabled
+            OBJECT_REF ipv6_accept_ra_default
+        CTN_END
+
+        # IPv6 redirects disabled
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF disabled
+            OBJECT_REF ipv6_accept_redirects_all
+        CTN_END
+
+        # IPv6 forwarding disabled
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF disabled
+            OBJECT_REF ipv6_forwarding
+        CTN_END
+
+        # IPv6 source routing disabled
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF disabled
+            OBJECT_REF ipv6_source_route_all
+        CTN_END
+
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF disabled
+            OBJECT_REF ipv6_source_route_default
+        CTN_END
+    CRI_END
+DEF_END

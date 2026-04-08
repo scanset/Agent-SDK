@@ -2,7 +2,7 @@
 //!
 //! Builds minimal summary output with pass/fail counts.
 
-use contract_kit::execution_api::ScanResult;
+use crate::contract_kit::execution_api::ScanResult;
 
 /// Build a unified summary JSON from all scan results
 pub fn build_summary(scan_results: &[ScanResult]) -> serde_json::Value {

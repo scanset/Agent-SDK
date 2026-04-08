@@ -1,0 +1,232 @@
+# KSI-SVC-VRI: Rocky 9 File Permissions and Ownership
+# STIG: SV-257790/791 grub.cfg root owned, SV-257882 system commands 755
+#       SV-257883 library dirs 755, SV-257884 library files 755
+#       SV-257885 /var/log 0755, SV-257886 /var/log/messages 0640
+#       SV-257887 audit tools 0755, SV-257891/892 /etc/group* 0644
+#       SV-257893/894 /etc/gshadow* 0000, SV-257895/896 /etc/passwd* 0644
+#       SV-257897 /etc/shadow- 0000, SV-257934 /etc/shadow 0000
+#       SV-257997/998 sshd_config root owned, SV-258000 SSH private keys 0640
+#       SV-258001 SSH public keys 0644, SV-258167 audit logs 0600
+#       SV-258172 auditd.conf 0640, SV-270175/176 /etc/audit/ root owned
+
+META
+    esp_id `ksi-svc-vri-r9-file-permissions-001`
+    version `1.0.0`
+    dsl_schema_version `1.0.0`
+    platform `rocky9`
+    criticality `high`
+
+    title `KSI-SVC-VRI: Rocky 9 File Permissions and Ownership`
+    description `Validates critical system files have correct permissions and root ownership - authentication files, audit logs, SSH config, GRUB config, and system binaries`
+    author `scanset-security`
+    tags `rocky9,stig,permissions,ownership,fedramp,KSI-SVC-VRI`
+
+    control_mapping `KSI:KSI-SVC-VRI`
+    control_objective `KSI-SVC-VRI`
+
+    assessment_method `TEST`
+    implementation_status `implemented`
+    responsible_role `system-admin`
+
+    control_origination `sp-system`
+    inherited_from `Rocky9:localhost:file-integrity`
+    customer_responsibility `configuration`
+
+    remediation_days `1`
+    recommendation `Use chmod and chown to correct permissions and ownership. Run rpm --setperms and rpm --setugids for system packages to restore RPM-defined permissions.`
+
+    component_id `comp-r9-file-permissions`
+
+    impl_KSI_SVC_VRI `File integrity through correct permissions is validated across authentication, audit, boot, and SSH configuration files. Authentication files are validated: /etc/shadow and /etc/gshadow have mode 0000 (inaccessible to all non-root users), /etc/passwd and /etc/group have mode 0644 (world-readable but not writable), and all are owned by root. Audit configuration is validated: auditd.conf has mode 0640, audit log files have mode 0600, and /etc/audit/ is owned by root. SSH host key files are validated: private keys have mode 0640, public keys have mode 0644, and sshd_config is owned by root. The GRUB configuration is validated as owned by root to prevent unauthorized modification of boot parameters.`
+
+META_END
+
+DEF
+    # Authentication files
+    OBJECT shadow_file
+        path `/etc/shadow`
+    OBJECT_END
+
+    OBJECT shadow_minus
+        path `/etc/shadow-`
+    OBJECT_END
+
+    OBJECT gshadow_file
+        path `/etc/gshadow`
+    OBJECT_END
+
+    OBJECT gshadow_minus
+        path `/etc/gshadow-`
+    OBJECT_END
+
+    OBJECT passwd_file
+        path `/etc/passwd`
+    OBJECT_END
+
+    OBJECT passwd_minus
+        path `/etc/passwd-`
+    OBJECT_END
+
+    OBJECT group_file
+        path `/etc/group`
+    OBJECT_END
+
+    OBJECT group_minus
+        path `/etc/group-`
+    OBJECT_END
+
+    # Boot files
+    OBJECT grub_cfg
+        path `/boot/grub2/grub.cfg`
+    OBJECT_END
+
+    # SSH files
+    OBJECT sshd_config
+        path `/etc/ssh/sshd_config`
+    OBJECT_END
+
+    OBJECT audit_dir
+        path `/etc/audit`
+    OBJECT_END
+
+    OBJECT auditd_conf
+        path `/etc/audit/auditd.conf`
+    OBJECT_END
+
+    OBJECT var_log
+        path `/var/log`
+    OBJECT_END
+
+    OBJECT var_log_messages
+        path `/var/log/messages`
+    OBJECT_END
+
+    # States
+    STATE mode_0000
+        exists boolean = true
+        permissions string = `0000`
+        owner_id string = `0`
+        group_id string = `0`
+    STATE_END
+
+    STATE mode_0640
+        exists boolean = true
+        permissions string = `0640`
+        owner_id string = `0`
+        group_id string = `0`
+    STATE_END
+
+    STATE mode_0644
+        exists boolean = true
+        permissions string = `0644`
+        owner_id string = `0`
+        group_id string = `0`
+    STATE_END
+
+    STATE mode_0755_root
+        exists boolean = true
+        permissions string = `0755`
+        owner_id string = `0`
+        group_id string = `0`
+    STATE_END
+
+    STATE root_owned
+        exists boolean = true
+        owner_id string = `0`
+        group_id string = `0`
+    STATE_END
+
+    CRI AND
+        # Shadow files - mode 0000
+        CTN file_metadata
+            TEST all all AND
+            STATE_REF mode_0000
+            OBJECT_REF shadow_file
+        CTN_END
+
+        CTN file_metadata
+            TEST all all AND
+            STATE_REF mode_0000
+            OBJECT_REF shadow_minus
+        CTN_END
+
+        CTN file_metadata
+            TEST all all AND
+            STATE_REF mode_0000
+            OBJECT_REF gshadow_file
+        CTN_END
+
+        CTN file_metadata
+            TEST all all AND
+            STATE_REF mode_0000
+            OBJECT_REF gshadow_minus
+        CTN_END
+
+        # Passwd/group files - mode 0644
+        CTN file_metadata
+            TEST all all AND
+            STATE_REF mode_0644
+            OBJECT_REF passwd_file
+        CTN_END
+
+        CTN file_metadata
+            TEST all all AND
+            STATE_REF mode_0644
+            OBJECT_REF passwd_minus
+        CTN_END
+
+        CTN file_metadata
+            TEST all all AND
+            STATE_REF mode_0644
+            OBJECT_REF group_file
+        CTN_END
+
+        CTN file_metadata
+            TEST all all AND
+            STATE_REF mode_0644
+            OBJECT_REF group_minus
+        CTN_END
+
+        # GRUB - root owned
+        CTN file_metadata
+            TEST all all AND
+            STATE_REF root_owned
+            OBJECT_REF grub_cfg
+        CTN_END
+
+        # SSH config - root owned
+        CTN file_metadata
+            TEST all all AND
+            STATE_REF root_owned
+            OBJECT_REF sshd_config
+        CTN_END
+
+        # Audit dir - root owned
+        CTN file_metadata
+            TEST all all AND
+            STATE_REF root_owned
+            OBJECT_REF audit_dir
+        CTN_END
+
+        # Auditd conf - mode 0640
+        CTN file_metadata
+            TEST all all AND
+            STATE_REF mode_0640
+            OBJECT_REF auditd_conf
+        CTN_END
+
+        # /var/log - mode 0755
+        CTN file_metadata
+            TEST all all AND
+            STATE_REF mode_0755_root
+            OBJECT_REF var_log
+        CTN_END
+
+        # /var/log/messages - mode 0640
+        CTN file_metadata
+            TEST all all AND
+            STATE_REF mode_0640
+            OBJECT_REF var_log_messages
+        CTN_END
+    CRI_END
+DEF_END

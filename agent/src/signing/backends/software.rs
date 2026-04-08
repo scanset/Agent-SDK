@@ -29,7 +29,7 @@ use crate::signing::types::SigningResult;
 ///
 /// ```ignore
 /// let backend = SoftwareBackend::new()?;
-/// let signature = backend.sign_envelope_hashes(content_hash, evidence_hash)?;
+/// let signature = backend.sign_envelope_hash(replay_hash)?;
 /// ```
 pub struct SoftwareBackend {
     /// ECDSA P-256 signing key
@@ -74,13 +74,9 @@ impl SoftwareBackend {
 }
 
 impl SigningBackend for SoftwareBackend {
-    fn sign_envelope_hashes(
-        &self,
-        content_hash: &str,
-        evidence_hash: &str,
-    ) -> SigningResult<SignatureBlock> {
-        // Compute the data to sign: SHA256(content_hash || evidence_hash)
-        let signed_data = compute_signed_data(content_hash, evidence_hash);
+    fn sign_envelope_hash(&self, replay_hash: &str) -> SigningResult<SignatureBlock> {
+        // Compute the data to sign: SHA256(replay_hash)
+        let signed_data = compute_signed_data(replay_hash);
 
         // Sign with ECDSA P-256
         let signature: Signature = self.signing_key.sign(&signed_data);
@@ -150,16 +146,15 @@ mod tests {
     fn test_software_backend_signing() {
         let backend = SoftwareBackend::new().expect("Failed to create backend");
 
-        let content_hash = "sha256:8726504ca47412e0d8c0be36a1286a79";
-        let evidence_hash = "sha256:9fbea98350c00a9642fe91431619dd3a";
+        let replay_hash = "sha256:8726504ca47412e0d8c0be36a1286a79c3f8e5b72da04b1ea9d3f12c847e6f02";
 
         let sig_block = backend
-            .sign_envelope_hashes(content_hash, evidence_hash)
+            .sign_envelope_hash(replay_hash)
             .expect("Signing failed");
 
         assert_eq!(sig_block.algorithm, "ecdsa-p256");
         assert_eq!(sig_block.signer_type, "agent");
-        assert_eq!(sig_block.covers, vec!["content_hash", "evidence_hash"]);
+        assert_eq!(sig_block.covers, vec!["replay_hash"]);
         assert!(!sig_block.signature.is_empty());
         assert!(!sig_block.public_key.is_empty());
     }
@@ -168,11 +163,10 @@ mod tests {
     fn test_software_backend_signature_verification() {
         let backend = SoftwareBackend::new().expect("Failed to create backend");
 
-        let content_hash = "sha256:8726504ca47412e0d8c0be36a1286a79";
-        let evidence_hash = "sha256:9fbea98350c00a9642fe91431619dd3a";
+        let replay_hash = "sha256:8726504ca47412e0d8c0be36a1286a79c3f8e5b72da04b1ea9d3f12c847e6f02";
 
         let sig_block = backend
-            .sign_envelope_hashes(content_hash, evidence_hash)
+            .sign_envelope_hash(replay_hash)
             .expect("Signing failed");
 
         // Decode public key
@@ -189,7 +183,7 @@ mod tests {
         let signature = Signature::from_der(&signature_bytes).expect("Failed to parse signature");
 
         // Recompute signed data
-        let signed_data = compute_signed_data(content_hash, evidence_hash);
+        let signed_data = compute_signed_data(replay_hash);
 
         // Verify
         assert!(verifying_key.verify(&signed_data, &signature).is_ok());

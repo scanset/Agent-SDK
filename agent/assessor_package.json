@@ -1,0 +1,682 @@
+{
+  "envelope": {
+    "result_id": "esp-result-18a484a2331c38b0",
+    "schema_version": "1.2.0",
+    "agent": {
+      "id": "esp-agent",
+      "name": "esp-agent",
+      "version": "1.2.0",
+      "agent_type": "cli"
+    },
+    "host": {
+      "id": "host-d0e9a93bcea660fb",
+      "hostname": "eaa1773d0cdb",
+      "os": "linux",
+      "arch": "x86_64"
+    },
+    "started_at": "2026-04-08T23:13:05Z",
+    "completed_at": "2026-04-08T23:13:05Z",
+    "replay_hash": "sha256:64972a180db8ae39af4c319d01419f7340b864ddbe56bafbc50554304b8da3e0",
+    "signature": {
+      "signer_id": "software:sha256:ff1e0e157d9b72e6",
+      "signer_type": "agent",
+      "algorithm": "ecdsa-p256",
+      "public_key": "BHRiAG4ObBArNqPtscMZaN/7Rqw7d6bCF3HGiNq4IJT3TzjEQeC7cITzhSrCjr38Tj45m1H3ysjnVzj7RUk8m78=",
+      "signature": "MEUCIFoI0FHfPLrH09YrXBU/uMQITLKQIYBJrr9peQjjXVtjAiEAkg6DJYgEqueGAXtJgpaL1bffnooN+z08xU1OiYv9FKE=",
+      "key_id": "software:ephemeral:5b19026e-ff88-479d-8fc7-99f34fe4ee99",
+      "signed_at": "2026-04-08T23:13:05Z",
+      "covers": [
+        "replay_hash"
+      ]
+    },
+    "identity_status": {
+      "bootstrapped": false,
+      "signer_id": "software:sha256:ff1e0e157d9b72e6",
+      "error": "Identity bootstrap disabled in configuration",
+      "error_code": "BOOTSTRAP_DISABLED"
+    }
+  },
+  "summary": {
+    "total_policies": 1,
+    "passed": 0,
+    "failed": 1,
+    "errors": 0,
+    "by_criticality": {
+      "critical": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      "high": {
+        "total": 1,
+        "passed": 0,
+        "failed": 1
+      },
+      "medium": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      "low": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0
+      },
+      "info": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0
+      }
+    },
+    "total_weight": 0.8,
+    "passed_weight": 0.0,
+    "posture_score": 0.0
+  },
+  "policies": [
+    {
+      "identity": {
+        "policy_id": "ksi-svc-vri-r9-file-permissions-001",
+        "platform": "rocky9",
+        "criticality": "high",
+        "control_mappings": [
+          {
+            "framework": "KSI",
+            "control_id": "KSI-SVC-VRI"
+          }
+        ],
+        "version": "1.0.0",
+        "dsl_schema_version": "1.0.0",
+        "title": "KSI-SVC-VRI: Rocky 9 File Permissions and Ownership",
+        "description": "Validates critical system files have correct permissions and root ownership - authentication files, audit logs, SSH config, GRUB config, and system binaries",
+        "author": "scanset-security",
+        "tags": [
+          "rocky9",
+          "stig",
+          "permissions",
+          "ownership",
+          "fedramp",
+          "KSI-SVC-VRI"
+        ],
+        "assessment_method": "TEST",
+        "responsible_role": "system-admin",
+        "customer_responsibility": "configuration",
+        "remediation_days": "1",
+        "component_id": "comp-r9-file-permissions",
+        "control_objective": "KSI-SVC-VRI",
+        "recommendation": "Use chmod and chown to correct permissions and ownership. Run rpm --setperms and rpm --setugids for system packages to restore RPM-defined permissions.",
+        "impl_KSI_SVC_VRI": "File integrity through correct permissions is validated across authentication, audit, boot, and SSH configuration files. Authentication files are validated: /etc/shadow and /etc/gshadow have mode 0000 (inaccessible to all non-root users), /etc/passwd and /etc/group have mode 0644 (world-readable but not writable), and all are owned by root. Audit configuration is validated: auditd.conf has mode 0640, audit log files have mode 0600, and /etc/audit/ is owned by root. SSH host key files are validated: private keys have mode 0640, public keys have mode 0644, and sshd_config is owned by root. The GRUB configuration is validated as owned by root to prevent unauthorized modification of boot parameters.",
+        "control_origination": "sp-system",
+        "implementation_status": "implemented",
+        "inherited_from": "Rocky9:localhost:file-integrity"
+      },
+      "outcome": "fail",
+      "weight": 0.8,
+      "findings": [
+        {
+          "finding_id": "f-6be2b263",
+          "severity": "high",
+          "title": "file_metadata validation failed",
+          "description": "File metadata validation failed:\n  - Object 'shadow_file': Field 'permissions' failed: expected '0000' Equals '0000', got '0640'\n  - Object 'shadow_file': Field 'group_id' failed: expected '0' Equals '0', got '42'",
+          "expected": {
+            "group_id": "String(\"0\")",
+            "permissions": "String(\"0000\")"
+          },
+          "actual": {
+            "group_id": "String(\"42\")",
+            "permissions": "String(\"0640\")"
+          },
+          "field_path": "CRI_AND > CTN_file_metadata"
+        },
+        {
+          "finding_id": "f-0b6834ec",
+          "severity": "high",
+          "title": "file_metadata validation failed",
+          "description": "File metadata validation failed:\n  - Object 'shadow_minus': Field 'exists' failed: expected true Equals true, got false\n  - Object 'shadow_minus': Field 'permissions' failed: expected '0000' Equals '0000', got ''\n  - Object 'shadow_minus': Field 'owner_id' failed: expected '0' Equals '0', got ''\n  - Object 'shadow_minus': Field 'group_id' failed: expected '0' Equals '0', got ''",
+          "expected": {
+            "exists": "Boolean(true)",
+            "group_id": "String(\"0\")",
+            "owner_id": "String(\"0\")",
+            "permissions": "String(\"0000\")"
+          },
+          "actual": {
+            "exists": "Boolean(false)",
+            "group_id": "String(\"\")",
+            "owner_id": "String(\"\")",
+            "permissions": "String(\"\")"
+          },
+          "field_path": "CRI_AND > CTN_file_metadata"
+        },
+        {
+          "finding_id": "f-5c0cbb96",
+          "severity": "high",
+          "title": "file_metadata validation failed",
+          "description": "File metadata validation failed:\n  - Object 'gshadow_file': Field 'permissions' failed: expected '0000' Equals '0000', got '0640'\n  - Object 'gshadow_file': Field 'group_id' failed: expected '0' Equals '0', got '42'",
+          "expected": {
+            "group_id": "String(\"0\")",
+            "permissions": "String(\"0000\")"
+          },
+          "actual": {
+            "group_id": "String(\"42\")",
+            "permissions": "String(\"0640\")"
+          },
+          "field_path": "CRI_AND > CTN_file_metadata"
+        },
+        {
+          "finding_id": "f-551a2eee",
+          "severity": "high",
+          "title": "file_metadata validation failed",
+          "description": "File metadata validation failed:\n  - Object 'gshadow_minus': Field 'permissions' failed: expected '0000' Equals '0000', got '0640'\n  - Object 'gshadow_minus': Field 'group_id' failed: expected '0' Equals '0', got '42'",
+          "expected": {
+            "group_id": "String(\"0\")",
+            "permissions": "String(\"0000\")"
+          },
+          "actual": {
+            "group_id": "String(\"42\")",
+            "permissions": "String(\"0640\")"
+          },
+          "field_path": "CRI_AND > CTN_file_metadata"
+        },
+        {
+          "finding_id": "f-40d13811",
+          "severity": "high",
+          "title": "file_metadata validation failed",
+          "description": "File metadata validation failed:\n  - Object 'passwd_minus': Field 'permissions' failed: expected '0644' Equals '0644', got '0600'",
+          "expected": {
+            "permissions": "String(\"0644\")"
+          },
+          "actual": {
+            "permissions": "String(\"0600\")"
+          },
+          "field_path": "CRI_AND > CTN_file_metadata"
+        },
+        {
+          "finding_id": "f-2c822db4",
+          "severity": "high",
+          "title": "file_metadata validation failed",
+          "description": "File metadata validation failed:\n  - Object 'grub_cfg': Field 'exists' failed: expected true Equals true, got false\n  - Object 'grub_cfg': Field 'owner_id' failed: expected '0' Equals '0', got ''\n  - Object 'grub_cfg': Field 'group_id' failed: expected '0' Equals '0', got ''",
+          "expected": {
+            "exists": "Boolean(true)",
+            "group_id": "String(\"0\")",
+            "owner_id": "String(\"0\")"
+          },
+          "actual": {
+            "exists": "Boolean(false)",
+            "group_id": "String(\"\")",
+            "owner_id": "String(\"\")"
+          },
+          "field_path": "CRI_AND > CTN_file_metadata"
+        },
+        {
+          "finding_id": "f-5fdefd54",
+          "severity": "high",
+          "title": "file_metadata validation failed",
+          "description": "File metadata validation failed:\n  - Object 'sshd_config': Field 'exists' failed: expected true Equals true, got false\n  - Object 'sshd_config': Field 'owner_id' failed: expected '0' Equals '0', got ''\n  - Object 'sshd_config': Field 'group_id' failed: expected '0' Equals '0', got ''",
+          "expected": {
+            "exists": "Boolean(true)",
+            "group_id": "String(\"0\")",
+            "owner_id": "String(\"0\")"
+          },
+          "actual": {
+            "exists": "Boolean(false)",
+            "group_id": "String(\"\")",
+            "owner_id": "String(\"\")"
+          },
+          "field_path": "CRI_AND > CTN_file_metadata"
+        },
+        {
+          "finding_id": "f-2b46210b",
+          "severity": "high",
+          "title": "file_metadata validation failed",
+          "description": "File metadata validation failed:\n  - Object 'audit_dir': Field 'exists' failed: expected true Equals true, got false\n  - Object 'audit_dir': Field 'owner_id' failed: expected '0' Equals '0', got ''\n  - Object 'audit_dir': Field 'group_id' failed: expected '0' Equals '0', got ''",
+          "expected": {
+            "exists": "Boolean(true)",
+            "group_id": "String(\"0\")",
+            "owner_id": "String(\"0\")"
+          },
+          "actual": {
+            "exists": "Boolean(false)",
+            "group_id": "String(\"\")",
+            "owner_id": "String(\"\")"
+          },
+          "field_path": "CRI_AND > CTN_file_metadata"
+        },
+        {
+          "finding_id": "f-98ee3847",
+          "severity": "high",
+          "title": "file_metadata validation failed",
+          "description": "File metadata validation failed:\n  - Object 'auditd_conf': Field 'exists' failed: expected true Equals true, got false\n  - Object 'auditd_conf': Field 'permissions' failed: expected '0640' Equals '0640', got ''\n  - Object 'auditd_conf': Field 'owner_id' failed: expected '0' Equals '0', got ''\n  - Object 'auditd_conf': Field 'group_id' failed: expected '0' Equals '0', got ''",
+          "expected": {
+            "exists": "Boolean(true)",
+            "group_id": "String(\"0\")",
+            "owner_id": "String(\"0\")",
+            "permissions": "String(\"0640\")"
+          },
+          "actual": {
+            "exists": "Boolean(false)",
+            "group_id": "String(\"\")",
+            "owner_id": "String(\"\")",
+            "permissions": "String(\"\")"
+          },
+          "field_path": "CRI_AND > CTN_file_metadata"
+        },
+        {
+          "finding_id": "f-ad14bab0",
+          "severity": "high",
+          "title": "file_metadata validation failed",
+          "description": "File metadata validation failed:\n  - Object 'var_log_messages': Field 'exists' failed: expected true Equals true, got false\n  - Object 'var_log_messages': Field 'permissions' failed: expected '0640' Equals '0640', got ''\n  - Object 'var_log_messages': Field 'owner_id' failed: expected '0' Equals '0', got ''\n  - Object 'var_log_messages': Field 'group_id' failed: expected '0' Equals '0', got ''",
+          "expected": {
+            "exists": "Boolean(true)",
+            "group_id": "String(\"0\")",
+            "owner_id": "String(\"0\")",
+            "permissions": "String(\"0640\")"
+          },
+          "actual": {
+            "exists": "Boolean(false)",
+            "group_id": "String(\"\")",
+            "owner_id": "String(\"\")",
+            "permissions": "String(\"\")"
+          },
+          "field_path": "CRI_AND > CTN_file_metadata"
+        }
+      ],
+      "evidence": {
+        "data": {
+          "file_metadata_sshd_config": {
+            "exists": false,
+            "file_group": "",
+            "file_mode": "",
+            "file_owner": "",
+            "file_size": 0,
+            "is_directory": false,
+            "is_hidden": false,
+            "is_readonly": false,
+            "is_system": false,
+            "readable": false,
+            "writable": false
+          },
+          "file_metadata_group_file": {
+            "exists": true,
+            "file_group": "0",
+            "file_mode": "0644",
+            "file_owner": "0",
+            "file_size": 446,
+            "is_directory": false,
+            "is_hidden": false,
+            "is_readonly": false,
+            "is_system": false,
+            "readable": true,
+            "writable": true
+          },
+          "file_metadata_gshadow_minus": {
+            "exists": true,
+            "file_group": "42",
+            "file_mode": "0640",
+            "file_owner": "0",
+            "file_size": 364,
+            "is_directory": false,
+            "is_hidden": false,
+            "is_readonly": false,
+            "is_system": false,
+            "readable": true,
+            "writable": true
+          },
+          "file_metadata_var_log_messages": {
+            "exists": false,
+            "file_group": "",
+            "file_mode": "",
+            "file_owner": "",
+            "file_size": 0,
+            "is_directory": false,
+            "is_hidden": false,
+            "is_readonly": false,
+            "is_system": false,
+            "readable": false,
+            "writable": false
+          },
+          "file_metadata_var_log": {
+            "exists": true,
+            "file_group": "0",
+            "file_mode": "0755",
+            "file_owner": "0",
+            "file_size": 4096,
+            "is_directory": true,
+            "is_hidden": false,
+            "is_readonly": false,
+            "is_system": false,
+            "readable": true,
+            "writable": false
+          },
+          "file_metadata_passwd_minus": {
+            "exists": true,
+            "file_group": "0",
+            "file_mode": "0600",
+            "file_owner": "0",
+            "file_size": 839,
+            "is_directory": false,
+            "is_hidden": false,
+            "is_readonly": false,
+            "is_system": false,
+            "readable": true,
+            "writable": true
+          },
+          "file_metadata_audit_dir": {
+            "exists": false,
+            "file_group": "",
+            "file_mode": "",
+            "file_owner": "",
+            "file_size": 0,
+            "is_directory": false,
+            "is_hidden": false,
+            "is_readonly": false,
+            "is_system": false,
+            "readable": false,
+            "writable": false
+          },
+          "file_metadata_group_minus": {
+            "exists": true,
+            "file_group": "0",
+            "file_mode": "0644",
+            "file_owner": "0",
+            "file_size": 434,
+            "is_directory": false,
+            "is_hidden": false,
+            "is_readonly": false,
+            "is_system": false,
+            "readable": true,
+            "writable": true
+          },
+          "file_metadata_passwd_file": {
+            "exists": true,
+            "file_group": "0",
+            "file_mode": "0644",
+            "file_owner": "0",
+            "file_size": 839,
+            "is_directory": false,
+            "is_hidden": false,
+            "is_readonly": false,
+            "is_system": false,
+            "readable": true,
+            "writable": true
+          },
+          "file_metadata_auditd_conf": {
+            "exists": false,
+            "file_group": "",
+            "file_mode": "",
+            "file_owner": "",
+            "file_size": 0,
+            "is_directory": false,
+            "is_hidden": false,
+            "is_readonly": false,
+            "is_system": false,
+            "readable": false,
+            "writable": false
+          },
+          "file_metadata_shadow_file": {
+            "exists": true,
+            "file_group": "42",
+            "file_mode": "0640",
+            "file_owner": "0",
+            "file_size": 474,
+            "is_directory": false,
+            "is_hidden": false,
+            "is_readonly": false,
+            "is_system": false,
+            "readable": true,
+            "writable": true
+          },
+          "file_metadata_gshadow_file": {
+            "exists": true,
+            "file_group": "42",
+            "file_mode": "0640",
+            "file_owner": "0",
+            "file_size": 373,
+            "is_directory": false,
+            "is_hidden": false,
+            "is_readonly": false,
+            "is_system": false,
+            "readable": true,
+            "writable": true
+          },
+          "file_metadata_shadow_minus": {
+            "exists": false,
+            "file_group": "",
+            "file_mode": "",
+            "file_owner": "",
+            "file_size": 0,
+            "is_directory": false,
+            "is_hidden": false,
+            "is_readonly": false,
+            "is_system": false,
+            "readable": false,
+            "writable": false
+          },
+          "file_metadata_grub_cfg": {
+            "exists": false,
+            "file_group": "",
+            "file_mode": "",
+            "file_owner": "",
+            "file_size": 0,
+            "is_directory": false,
+            "is_hidden": false,
+            "is_readonly": false,
+            "is_system": false,
+            "readable": false,
+            "writable": false
+          }
+        },
+        "collection_metadata": [
+          {
+            "object_id": "group_file",
+            "ctn_type": "file_metadata",
+            "collector_id": "filesystem_collector",
+            "collection_mode": "default",
+            "duration_ms": 0,
+            "field_count": 11,
+            "has_warnings": false,
+            "method": {
+              "method_type": "file_stat",
+              "description": "Query file metadata via stat()",
+              "target": "/etc/group"
+            }
+          },
+          {
+            "object_id": "grub_cfg",
+            "ctn_type": "file_metadata",
+            "collector_id": "filesystem_collector",
+            "collection_mode": "default",
+            "duration_ms": 0,
+            "field_count": 11,
+            "has_warnings": false,
+            "method": {
+              "method_type": "file_stat",
+              "description": "Query file metadata via stat()",
+              "target": "/boot/grub2/grub.cfg"
+            }
+          },
+          {
+            "object_id": "gshadow_minus",
+            "ctn_type": "file_metadata",
+            "collector_id": "filesystem_collector",
+            "collection_mode": "default",
+            "duration_ms": 0,
+            "field_count": 11,
+            "has_warnings": false,
+            "method": {
+              "method_type": "file_stat",
+              "description": "Query file metadata via stat()",
+              "target": "/etc/gshadow-"
+            }
+          },
+          {
+            "object_id": "var_log_messages",
+            "ctn_type": "file_metadata",
+            "collector_id": "filesystem_collector",
+            "collection_mode": "default",
+            "duration_ms": 0,
+            "field_count": 11,
+            "has_warnings": false,
+            "method": {
+              "method_type": "file_stat",
+              "description": "Query file metadata via stat()",
+              "target": "/var/log/messages"
+            }
+          },
+          {
+            "object_id": "passwd_minus",
+            "ctn_type": "file_metadata",
+            "collector_id": "filesystem_collector",
+            "collection_mode": "default",
+            "duration_ms": 0,
+            "field_count": 11,
+            "has_warnings": false,
+            "method": {
+              "method_type": "file_stat",
+              "description": "Query file metadata via stat()",
+              "target": "/etc/passwd-"
+            }
+          },
+          {
+            "object_id": "shadow_minus",
+            "ctn_type": "file_metadata",
+            "collector_id": "filesystem_collector",
+            "collection_mode": "default",
+            "duration_ms": 0,
+            "field_count": 11,
+            "has_warnings": false,
+            "method": {
+              "method_type": "file_stat",
+              "description": "Query file metadata via stat()",
+              "target": "/etc/shadow-"
+            }
+          },
+          {
+            "object_id": "shadow_file",
+            "ctn_type": "file_metadata",
+            "collector_id": "filesystem_collector",
+            "collection_mode": "default",
+            "duration_ms": 0,
+            "field_count": 11,
+            "has_warnings": false,
+            "method": {
+              "method_type": "file_stat",
+              "description": "Query file metadata via stat()",
+              "target": "/etc/shadow"
+            }
+          },
+          {
+            "object_id": "gshadow_file",
+            "ctn_type": "file_metadata",
+            "collector_id": "filesystem_collector",
+            "collection_mode": "default",
+            "duration_ms": 0,
+            "field_count": 11,
+            "has_warnings": false,
+            "method": {
+              "method_type": "file_stat",
+              "description": "Query file metadata via stat()",
+              "target": "/etc/gshadow"
+            }
+          },
+          {
+            "object_id": "group_minus",
+            "ctn_type": "file_metadata",
+            "collector_id": "filesystem_collector",
+            "collection_mode": "default",
+            "duration_ms": 0,
+            "field_count": 11,
+            "has_warnings": false,
+            "method": {
+              "method_type": "file_stat",
+              "description": "Query file metadata via stat()",
+              "target": "/etc/group-"
+            }
+          },
+          {
+            "object_id": "sshd_config",
+            "ctn_type": "file_metadata",
+            "collector_id": "filesystem_collector",
+            "collection_mode": "default",
+            "duration_ms": 0,
+            "field_count": 11,
+            "has_warnings": false,
+            "method": {
+              "method_type": "file_stat",
+              "description": "Query file metadata via stat()",
+              "target": "/etc/ssh/sshd_config"
+            }
+          },
+          {
+            "object_id": "auditd_conf",
+            "ctn_type": "file_metadata",
+            "collector_id": "filesystem_collector",
+            "collection_mode": "default",
+            "duration_ms": 0,
+            "field_count": 11,
+            "has_warnings": false,
+            "method": {
+              "method_type": "file_stat",
+              "description": "Query file metadata via stat()",
+              "target": "/etc/audit/auditd.conf"
+            }
+          },
+          {
+            "object_id": "var_log",
+            "ctn_type": "file_metadata",
+            "collector_id": "filesystem_collector",
+            "collection_mode": "default",
+            "duration_ms": 0,
+            "field_count": 11,
+            "has_warnings": false,
+            "method": {
+              "method_type": "file_stat",
+              "description": "Query file metadata via stat()",
+              "target": "/var/log"
+            }
+          },
+          {
+            "object_id": "audit_dir",
+            "ctn_type": "file_metadata",
+            "collector_id": "filesystem_collector",
+            "collection_mode": "default",
+            "duration_ms": 0,
+            "field_count": 11,
+            "has_warnings": false,
+            "method": {
+              "method_type": "file_stat",
+              "description": "Query file metadata via stat()",
+              "target": "/etc/audit"
+            }
+          },
+          {
+            "object_id": "passwd_file",
+            "ctn_type": "file_metadata",
+            "collector_id": "filesystem_collector",
+            "collection_mode": "default",
+            "duration_ms": 0,
+            "field_count": 11,
+            "has_warnings": false,
+            "method": {
+              "method_type": "file_stat",
+              "description": "Query file metadata via stat()",
+              "target": "/etc/passwd"
+            }
+          }
+        ],
+        "collected_at": "2026-04-22T23:13:05Z"
+      },
+      "reproducibility": {
+        "commands": [],
+        "requirements": [
+          "File system access to target paths"
+        ]
+      }
+    }
+  ],
+  "package_info": {
+    "format_version": "1.2.0",
+    "generated_at": "2026-04-22T23:13:05Z",
+    "purpose": "Compliance assessment verification",
+    "contains_cui": true,
+    "distribution": "Internal use only - contains CUI"
+  }
+}

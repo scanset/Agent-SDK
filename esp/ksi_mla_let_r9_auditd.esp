@@ -1,0 +1,95 @@
+# KSI-MLA-LET: Rocky 9 Audit System Configuration
+# STIG: SV-258152 audit enabled, SV-258153 action_mail_acct on error
+#       SV-258154 admin_space_left_action, SV-258155 max_log_file
+#       SV-258156 space_left_action, SV-258158 admin_space_left_action
+#       SV-258160 max_log_file_action, SV-258162 overflow_action
+#       SV-258164 local_events=yes, SV-258168 flush setting
+#       SV-258169 log_format=ENRICHED, SV-258170 write_logs=yes
+#       SV-258228 loginuid immutable, SV-258229 audit rules immutable
+
+META
+    esp_id `ksi-mla-let-r9-auditd-001`
+    version `1.0.0`
+    dsl_schema_version `1.0.0`
+    platform `rocky9`
+    criticality `high`
+
+    title `KSI-MLA-LET: Rocky 9 Audit System Configuration`
+    description `Validates the auditd service is active and auditd.conf is configured to capture all local events, write to disk, use enriched format, and take appropriate action when storage thresholds are reached`
+    author `scanset-security`
+    tags `rocky9,stig,audit,auditd,fedramp,KSI-MLA-LET`
+
+    control_mapping `KSI:KSI-MLA-LET`
+    control_objective `KSI-MLA-LET`
+
+    assessment_method `TEST`
+    implementation_status `implemented`
+    responsible_role `system-admin`
+
+    control_origination `sp-system`
+    inherited_from `Rocky9:localhost:audit-config`
+    customer_responsibility `configuration`
+
+    remediation_days `3`
+    recommendation `Configure /etc/audit/auditd.conf per STIG requirements. Ensure auditd service is enabled and active. Set audit rules to be immutable (-e 2) in /etc/audit/rules.d/99-finalize.rules.`
+
+    component_id `comp-r9-audit`
+
+    impl_KSI_MLA_LET `Audit logging configuration is validated at the service and configuration levels. The auditd service is validated as active and enabled at boot. The auditd.conf is validated to capture local events (local_events=yes), write logs to disk (write_logs=yes), use enriched format for identity information (log_format=ENRICHED), and flush records to disk (flush=INCREMENTAL_ASYNC or DATA). Storage threshold actions are validated: space_left_action alerts when 75% full, admin_space_left_action halts or emails when 95% full, and max_log_file_action rotates when log files reach maximum size. The audit overflow action is validated to prevent event loss. Audit loginuid immutability and rule immutability are validated to prevent tampering with the audit configuration during operation.`
+
+META_END
+
+DEF
+    OBJECT auditd_service
+        unit_name `auditd.service`
+    OBJECT_END
+
+    OBJECT auditd_conf
+        path `/etc/audit/auditd.conf`
+    OBJECT_END
+
+    OBJECT audit_rules_finalize
+        path `/etc/audit/rules.d/99-finalize.rules`
+    OBJECT_END
+
+    STATE auditd_active
+        found boolean = true
+        active_state string = `active`
+        sub_state string = `running`
+        enabled string = `enabled`
+    STATE_END
+
+    STATE auditd_conf_compliant
+        content string contains `local_events = yes`
+        content string contains `write_logs = yes`
+        content string contains `log_format = ENRICHED`
+        content string contains `space_left_action = email`
+        content string contains `admin_space_left_action = halt`
+        content string contains `max_log_file_action = rotate`
+        content string contains `overflow_action = syslog`
+    STATE_END
+
+    STATE audit_rules_immutable
+        content string contains `-e 2`
+    STATE_END
+
+    CRI AND
+        CTN systemd_service
+            TEST all all AND
+            STATE_REF auditd_active
+            OBJECT_REF auditd_service
+        CTN_END
+
+        CTN file_content
+            TEST all all AND
+            STATE_REF auditd_conf_compliant
+            OBJECT_REF auditd_conf
+        CTN_END
+
+        CTN file_content
+            TEST all all AND
+            STATE_REF audit_rules_immutable
+            OBJECT_REF audit_rules_finalize
+        CTN_END
+    CRI_END
+DEF_END

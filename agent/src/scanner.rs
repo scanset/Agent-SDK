@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 
-use contract_kit::execution_api::{
+use crate::contract_kit::execution_api::{
     log_error, log_info, log_success, logging, scan_file_with_logging, CtnStrategyRegistry,
     ScanResult, StrategyError,
 };

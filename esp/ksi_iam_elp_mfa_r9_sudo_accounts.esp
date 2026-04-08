@@ -1,0 +1,121 @@
+# KSI-IAM-ELP / KSI-IAM-MFA: Rocky 9 Sudo and Account Policy
+# STIG: SV-258084 sudo timestamp_timeout, SV-258085 use_pty
+#       SV-258086 requiretty, SV-258087 sudo restricted
+#       SV-258088 su restricted to wheel, SV-258106 requires password
+#       SV-258118 no NOPASSWD, SV-272496 sudo SELinux context
+#       SV-258054/056 faillock deny=3, SV-258055 root lockout
+#       SV-258057 never_reset, SV-258068 TMOUT=600
+#       SV-258071 fail_delay=4, SV-258049 inactive=35
+
+META
+    esp_id `ksi-iam-elp-iam-mfa-r9-sudo-accounts-001`
+    version `1.0.0`
+    dsl_schema_version `1.0.0`
+    platform `rocky9`
+    criticality `high`
+
+    title `KSI-IAM-ELP / KSI-IAM-MFA: Rocky 9 Sudo and Account Policy`
+    description `Validates sudo privilege escalation requires reauthentication, is restricted to authorized users, account lockout is configured, and idle sessions are terminated`
+    author `scanset-security`
+    tags `rocky9,stig,sudo,accounts,faillock,fedramp,KSI-IAM-ELP,KSI-IAM-MFA`
+
+    control_mapping `KSI:KSI-IAM-ELP,KSI:KSI-IAM-MFA`
+    control_objective `KSI-IAM-ELP,KSI-IAM-MFA`
+
+    assessment_method `TEST`
+    implementation_status `implemented`
+    responsible_role `system-admin`
+
+    control_origination `sp-system`
+    inherited_from `Rocky9:localhost:account-hardening`
+    customer_responsibility `configuration`
+
+    remediation_days `7`
+    recommendation `Configure /etc/sudoers.d/stig with timestamp_timeout=0, use_pty, requiretty. Restrict su via pam_wheel. Configure faillock in /etc/security/faillock.conf. Set TMOUT in /etc/profile.d/tmout.sh.`
+
+    component_id `comp-r9-accounts`
+
+    impl_KSI_IAM_ELP `Least privilege for privilege escalation is validated by confirming sudo requires reauthentication at every invocation (timestamp_timeout=0), is restricted to a specific group (no unrestricted ALL=(ALL) without authentication), does not permit passwordless escalation (no NOPASSWD in sudoers), uses a pseudo-terminal (use_pty) to prevent output redirection attacks, and requires a real terminal (requiretty). The su command is restricted to the wheel group via PAM. SELinux context elevation is confirmed for sudo sessions.`
+
+    impl_KSI_IAM_MFA `Account authentication controls are validated by confirming pam_faillock is configured to lock accounts after 3 failed attempts within a 15-minute window (deny=3, fail_interval=900), the root account is locked after failed attempts, locked accounts require administrator intervention to unlock (unlock_time=0), failed login attempts are delayed by 4 seconds (fail_delay=4), and interactive sessions are automatically terminated after 10 minutes of inactivity (TMOUT=600). Accounts are disabled after 35 days of inactivity.`
+
+META_END
+
+DEF
+    OBJECT sudoers_dir
+        path `/etc/sudoers`
+    OBJECT_END
+
+    OBJECT faillock_conf
+        path `/etc/security/faillock.conf`
+    OBJECT_END
+
+    OBJECT profile_tmout
+        path `/etc/profile.d/tmout.sh`
+    OBJECT_END
+
+    OBJECT pam_su
+        path `/etc/pam.d/su`
+    OBJECT_END
+
+    OBJECT login_defs
+        path `/etc/login.defs`
+    OBJECT_END
+
+    STATE sudo_hardened
+        content string contains `timestamp_timeout=0`
+        content string contains `use_pty`
+        content string not_contains `NOPASSWD`
+    STATE_END
+
+    STATE faillock_configured
+        content string contains `deny = 3`
+        content string contains `fail_interval = 900`
+        content string contains `unlock_time = 0`
+        content string contains `even_deny_root`
+    STATE_END
+
+    STATE session_timeout
+        content string contains `TMOUT=600`
+    STATE_END
+
+    STATE su_restricted
+        content string contains `pam_wheel.so`
+    STATE_END
+
+    STATE inactive_configured
+        content string contains `INACTIVE=35`
+    STATE_END
+
+    CRI AND
+        CTN file_content
+            TEST all all AND
+            STATE_REF sudo_hardened
+            OBJECT_REF sudoers_dir
+        CTN_END
+
+        CTN file_content
+            TEST all all AND
+            STATE_REF faillock_configured
+            OBJECT_REF faillock_conf
+        CTN_END
+
+        CTN file_content
+            TEST all all AND
+            STATE_REF session_timeout
+            OBJECT_REF profile_tmout
+        CTN_END
+
+        CTN file_content
+            TEST all all AND
+            STATE_REF su_restricted
+            OBJECT_REF pam_su
+        CTN_END
+
+        CTN file_content
+            TEST all all AND
+            STATE_REF inactive_configured
+            OBJECT_REF login_defs
+        CTN_END
+    CRI_END
+DEF_END

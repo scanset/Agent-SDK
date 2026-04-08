@@ -1,0 +1,210 @@
+# KSI-CNA-MAT / KSI-MLA-LET / KSI-SVC-VRI: Rocky 9 LOW STIG Findings
+# STIG: SV-257782 (LOW) - rngd service enabled
+#       SV-257795 (LOW) - pti=on in kernel cmdline
+#       SV-257796 (LOW) - audit=1 in kernel cmdline
+#       SV-257824 (LOW) - clean_requirements_on_remove=True
+#       SV-257845 (LOW) - /var separate filesystem (verify only)
+#       SV-257846 (LOW) - /var/log separate filesystem (verify only)
+#       SV-257847 (LOW) - /var/log/audit separate filesystem (verify only)
+#       SV-257880 (LOW) - cramfs kernel module disabled
+#       SV-257946 (LOW) - chrony port=0
+#       SV-257947 (LOW) - chrony cmdport=0
+#       SV-258037 (LOW) - USBGuard audit logging
+#       SV-258069 (LOW) - max concurrent sessions 10
+#       SV-258076 (LOW) - display last logon
+#       SV-258138 (LOW) - AIDE verifies ACLs
+#       SV-258139 (LOW) - AIDE verifies xattrs
+#       SV-258173 (LOW) - audit_backlog_limit in kernel cmdline
+
+META
+    esp_id `ksi-cna-mat-mla-let-svc-vri-r9-low-findings-001`
+    version `1.0.0`
+    dsl_schema_version `1.0.0`
+    platform `rocky9`
+    criticality `medium`
+
+    title `KSI-CNA-MAT / KSI-MLA-LET / KSI-SVC-VRI: Rocky 9 LOW STIG Findings`
+    description `Validates all 16 LOW severity STIG findings including rngd entropy service, kernel cmdline hardening parameters, package cleanup policy, chrony server isolation, USBGuard audit logging, session limits, and AIDE integrity checking configuration`
+    author `scanset-security`
+    tags `rocky9,stig,low,rngd,chrony,aide,usbguard,fedramp,KSI-CNA-MAT,KSI-MLA-LET,KSI-SVC-VRI`
+
+    control_mapping `KSI:KSI-CNA-MAT,KSI:KSI-MLA-LET,KSI:KSI-SVC-VRI`
+    control_objective `KSI-CNA-MAT,KSI-MLA-LET,KSI-SVC-VRI`
+
+    assessment_method `TEST`
+    implementation_status `implemented`
+    responsible_role `system-admin`
+
+    control_origination `sp-system`
+    inherited_from `Rocky9:localhost:low-hardening`
+    customer_responsibility `configuration`
+
+    remediation_days `30`
+    recommendation `Enable rngd service. Add pti=on audit=1 audit_backlog_limit=8192 to GRUB_CMDLINE_LINUX. Set clean_requirements_on_remove=True in dnf.conf. Set port=0 and cmdport=0 in chrony.conf. Enable USBGuard AuditBackend=LinuxAudit. Set maxlogins=10 in limits.conf. Verify AIDE checks ACLs and xattrs.`
+
+    component_id `comp-r9-low`
+
+    impl_KSI_CNA_MAT `Attack surface reduction at the LOW severity level is validated by confirming the cramfs filesystem module is blacklisted from loading, the chrony NTP daemon is not operating as a server (port=0) and not accepting network management commands (cmdport=0), and concurrent session limits are enforced (maxlogins=10). The hardware random number generator daemon is validated as active to ensure sufficient entropy for cryptographic operations.`
+
+    impl_KSI_MLA_LET `Monitoring and logging configuration at the LOW severity level is validated by confirming the kernel audit subsystem is enabled at boot (audit=1 in cmdline), the audit backlog buffer is sufficient to capture pre-audit events (audit_backlog_limit=8192), and USBGuard is configured to send peripheral control events to the Linux audit subsystem (AuditBackend=LinuxAudit). AIDE file integrity monitoring is validated to check POSIX ACLs and extended attributes in addition to standard file metadata.`
+
+    impl_KSI_SVC_VRI `Service and resource integrity at the LOW severity level is validated by confirming processor vulnerability mitigations are enabled at boot (pti=on for Meltdown protection), package management is configured to remove superseded package versions (clean_requirements_on_remove=True), and the last logon notification is configured in PAM to alert users of prior access.`
+
+META_END
+
+DEF
+    # Kernel cmdline
+    OBJECT grub_default
+        path `/etc/default/grub`
+    OBJECT_END
+
+    # dnf.conf
+    OBJECT dnf_conf
+        path `/etc/dnf/dnf.conf`
+    OBJECT_END
+
+    # chrony.conf
+    OBJECT chrony_conf
+        path `/etc/chrony.conf`
+    OBJECT_END
+
+    # USBGuard daemon config
+    OBJECT usbguard_conf
+        path `/etc/usbguard/usbguard-daemon.conf`
+    OBJECT_END
+
+    # limits.conf
+    OBJECT limits_conf
+        path `/etc/security/limits.conf`
+    OBJECT_END
+
+    # PAM login
+    OBJECT pam_login
+        path `/etc/pam.d/login`
+    OBJECT_END
+
+    # AIDE config
+    OBJECT aide_conf
+        path `/etc/aide.conf`
+    OBJECT_END
+
+    # modprobe cramfs
+    OBJECT modprobe_cramfs
+        path `/etc/modprobe.d/cramfs.conf`
+    OBJECT_END
+
+    # rngd service
+    OBJECT rngd_service
+        unit_name `rngd.service`
+    OBJECT_END
+
+    # States
+
+    STATE grub_low_hardened
+        content string contains `pti=on`
+        content string contains `audit=1`
+        content string contains `audit_backlog_limit=8192`
+    STATE_END
+
+    STATE dnf_cleanup_enabled
+        content string contains `clean_requirements_on_remove=True`
+    STATE_END
+
+    STATE chrony_server_disabled
+        content string contains `port 0`
+        content string contains `cmdport 0`
+    STATE_END
+
+    STATE usbguard_audit_enabled
+        content string contains `AuditBackend=LinuxAudit`
+    STATE_END
+
+    STATE session_limit_ten
+        content string contains `* hard maxlogins 10`
+    STATE_END
+
+    STATE pam_lastlog_enabled
+        content string contains `pam_lastlog`
+    STATE_END
+
+    STATE aide_acl_xattrs
+        content string contains `acl`
+        content string contains `xattrs`
+    STATE_END
+
+    STATE cramfs_blacklisted
+        content string contains `install cramfs /bin/false`
+        content string contains `blacklist cramfs`
+    STATE_END
+
+    STATE rngd_active
+        found boolean = true
+        active_state string = `active`
+        enabled string = `enabled`
+    STATE_END
+
+    CRI AND
+        # SV-257782 -- rngd active
+        CTN systemd_service
+            TEST all all AND
+            STATE_REF rngd_active
+            OBJECT_REF rngd_service
+        CTN_END
+
+        # SV-257795/796/258173 -- kernel cmdline
+        CTN file_content
+            TEST all all AND
+            STATE_REF grub_low_hardened
+            OBJECT_REF grub_default
+        CTN_END
+
+        # SV-257824 -- dnf cleanup
+        CTN file_content
+            TEST all all AND
+            STATE_REF dnf_cleanup_enabled
+            OBJECT_REF dnf_conf
+        CTN_END
+
+        # SV-257880 -- cramfs blacklisted
+        CTN file_content
+            TEST all all AND
+            STATE_REF cramfs_blacklisted
+            OBJECT_REF modprobe_cramfs
+        CTN_END
+
+        # SV-257946/947 -- chrony not a server
+        CTN file_content
+            TEST all all AND
+            STATE_REF chrony_server_disabled
+            OBJECT_REF chrony_conf
+        CTN_END
+
+        # SV-258037 -- USBGuard audit
+        CTN file_content
+            TEST all all AND
+            STATE_REF usbguard_audit_enabled
+            OBJECT_REF usbguard_conf
+        CTN_END
+
+        # SV-258069 -- session limit
+        CTN file_content
+            TEST all all AND
+            STATE_REF session_limit_ten
+            OBJECT_REF limits_conf
+        CTN_END
+
+        # SV-258076 -- last logon
+        CTN file_content
+            TEST all all AND
+            STATE_REF pam_lastlog_enabled
+            OBJECT_REF pam_login
+        CTN_END
+
+        # SV-258138/139 -- AIDE ACL + xattrs
+        CTN file_content
+            TEST all all AND
+            STATE_REF aide_acl_xattrs
+            OBJECT_REF aide_conf
+        CTN_END
+    CRI_END
+DEF_END

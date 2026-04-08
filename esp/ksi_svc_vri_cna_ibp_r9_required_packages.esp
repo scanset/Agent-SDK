@@ -1,0 +1,293 @@
+# KSI-SVC-VRI / KSI-CNA-IBP: Rocky 9 Required Security Packages
+# STIG: SV-257825 subscription-manager, SV-257838 openssl-pkcs11
+#       SV-257839 gnutls-utils, SV-257840 nss-tools, SV-257841 rng-tools
+#       SV-257842 s-nail, SV-257954 libreswan, SV-257935 firewalld
+#       SV-257943 chrony, SV-257978 openssh, SV-257980 openssh-clients
+#       SV-258035 usbguard, SV-258081 policycoreutils
+#       SV-258082 policycoreutils-python-utils, SV-258083 sudo
+#       SV-258089 fapolicy, SV-258124 pcsc-lite, SV-258126 opensc
+#       SV-258134 aide, SV-258140 rsyslog, SV-258151 audit
+#       SV-258175 audispd-plugins, SV-258234 crypto-policies
+#       SV-272488 postfix
+
+META
+    esp_id `ksi-svc-vri-cna-ibp-r9-required-packages-001`
+    version `1.0.0`
+    dsl_schema_version `1.0.0`
+    platform `rocky9`
+    criticality `high`
+
+    title `KSI-SVC-VRI / KSI-CNA-IBP: Rocky 9 Required Security Packages`
+    description `Validates that required security packages are installed including audit, AIDE, firewalld, chrony, sudo, fapolicy, PKI tools, and cryptographic policy management`
+    author `scanset-security`
+    tags `rocky9,stig,packages,security-tools,fedramp,KSI-SVC-VRI,KSI-CNA-IBP`
+
+    control_mapping `KSI:KSI-SVC-VRI,KSI:KSI-CNA-IBP`
+    control_objective `KSI-SVC-VRI,KSI-CNA-IBP`
+
+    assessment_method `TEST`
+    implementation_status `implemented`
+    responsible_role `system-admin`
+
+    control_origination `sp-system`
+    inherited_from `Rocky9:localhost:package-management`
+    customer_responsibility `configuration`
+
+    remediation_days `1`
+    recommendation `Install all missing packages via dnf install. These packages provide foundational security services required for FedRAMP compliance.`
+
+    component_id `comp-r9-packages`
+
+    impl_KSI_SVC_VRI `Service and resource integrity is validated by confirming the security toolchain is fully installed. AIDE provides file integrity monitoring. The audit package and audispd-plugins provide the audit subsystem. rsyslog provides log management. firewalld provides host firewall enforcement. chrony provides authenticated time synchronization. The crypto-policies package manages system-wide cryptographic policy. These packages collectively provide the monitoring, logging, and integrity verification capabilities required to detect unauthorized modifications.`
+
+    impl_KSI_CNA_IBP `Isolation boundary protection tooling is validated by confirming policycoreutils and policycoreutils-python-utils are installed to manage SELinux policy, fapolicy is installed to enforce application whitelisting, usbguard is installed to control peripheral access, and openssh is installed to enforce encrypted remote access. PKI tools (openssl-pkcs11, gnutls-utils, nss-tools, pcsc-lite, opensc) support smart card and certificate-based authentication enforcement.`
+
+META_END
+
+DEF
+    STATE installed
+        installed boolean = true
+    STATE_END
+
+    OBJECT subscription_manager
+        package_name `subscription-manager`
+    OBJECT_END
+
+    OBJECT openssl_pkcs11
+        package_name `openssl-pkcs11`
+    OBJECT_END
+
+    OBJECT gnutls_utils
+        package_name `gnutls-utils`
+    OBJECT_END
+
+    OBJECT nss_tools
+        package_name `nss-tools`
+    OBJECT_END
+
+    OBJECT rng_tools
+        package_name `rng-tools`
+    OBJECT_END
+
+    OBJECT s_nail
+        package_name `s-nail`
+    OBJECT_END
+
+    OBJECT libreswan
+        package_name `libreswan`
+    OBJECT_END
+
+    OBJECT firewalld_pkg
+        package_name `firewalld`
+    OBJECT_END
+
+    OBJECT chrony_pkg
+        package_name `chrony`
+    OBJECT_END
+
+    OBJECT openssh_pkg
+        package_name `openssh`
+    OBJECT_END
+
+    OBJECT openssh_clients
+        package_name `openssh-clients`
+    OBJECT_END
+
+    OBJECT usbguard_pkg
+        package_name `usbguard`
+    OBJECT_END
+
+    OBJECT policycoreutils_pkg
+        package_name `policycoreutils`
+    OBJECT_END
+
+    OBJECT policycoreutils_python
+        package_name `policycoreutils-python-utils`
+    OBJECT_END
+
+    OBJECT sudo_pkg
+        package_name `sudo`
+    OBJECT_END
+
+    OBJECT fapolicy_pkg
+        package_name `fapolicyd`
+    OBJECT_END
+
+    OBJECT pcsc_lite
+        package_name `pcsc-lite`
+    OBJECT_END
+
+    OBJECT opensc_pkg
+        package_name `opensc`
+    OBJECT_END
+
+    OBJECT aide_pkg
+        package_name `aide`
+    OBJECT_END
+
+    OBJECT rsyslog_pkg
+        package_name `rsyslog`
+    OBJECT_END
+
+    OBJECT audit_pkg
+        package_name `audit`
+    OBJECT_END
+
+    OBJECT audispd_plugins
+        package_name `audispd-plugins`
+    OBJECT_END
+
+    OBJECT crypto_policies
+        package_name `crypto-policies`
+    OBJECT_END
+
+    OBJECT postfix_pkg
+        package_name `postfix`
+    OBJECT_END
+
+    CRI AND
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF installed
+            OBJECT_REF subscription_manager
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF installed
+            OBJECT_REF openssl_pkcs11
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF installed
+            OBJECT_REF gnutls_utils
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF installed
+            OBJECT_REF nss_tools
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF installed
+            OBJECT_REF rng_tools
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF installed
+            OBJECT_REF s_nail
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF installed
+            OBJECT_REF libreswan
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF installed
+            OBJECT_REF firewalld_pkg
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF installed
+            OBJECT_REF chrony_pkg
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF installed
+            OBJECT_REF openssh_pkg
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF installed
+            OBJECT_REF openssh_clients
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF installed
+            OBJECT_REF usbguard_pkg
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF installed
+            OBJECT_REF policycoreutils_pkg
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF installed
+            OBJECT_REF policycoreutils_python
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF installed
+            OBJECT_REF sudo_pkg
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF installed
+            OBJECT_REF fapolicy_pkg
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF installed
+            OBJECT_REF pcsc_lite
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF installed
+            OBJECT_REF opensc_pkg
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF installed
+            OBJECT_REF aide_pkg
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF installed
+            OBJECT_REF rsyslog_pkg
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF installed
+            OBJECT_REF audit_pkg
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF installed
+            OBJECT_REF audispd_plugins
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF installed
+            OBJECT_REF crypto_policies
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF installed
+            OBJECT_REF postfix_pkg
+        CTN_END
+    CRI_END
+DEF_END

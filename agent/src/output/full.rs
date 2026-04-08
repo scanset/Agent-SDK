@@ -4,24 +4,32 @@
 //!
 //! ## Hash Architecture
 //!
-//! The `content_hash` and `evidence_hash` are pre-computed in the execution engine
-//! and passed through via `ScanResult`. This ensures hash consistency across all
-//! output formats.
+//! The `replay_hash` is pre-computed in the execution engine and passed through
+//! via `ScanResult`. This ensures hash consistency across all output formats.
+//!
+//! ## Identity Status
+//!
+//! As of schema v1.2.0, full results include an `identity_status` field.
+//! The Agent SDK always provides `IdentityStatus::disabled` since it does
+//! not perform PKI bootstrap.
 
-use common::results::{Evidence, FullResult, PolicyInput, ResultBuilder};
-use contract_kit::execution_api::ScanResult;
+use common::results::{Evidence, FullResult, IdentityStatus, PolicyInput, ResultBuilder};
+use crate::contract_kit::execution_api::ScanResult;
 
 use super::OutputError;
-use crate::output::combine_scan_hashes;
+use crate::output::combine_replay_hashes;
 
 /// Build a unified FullResult containing all policy results in a single envelope
 ///
 /// ## Hash Handling
 ///
-/// Uses pre-computed hashes from `ScanResult` rather than recomputing them.
-/// This ensures the full result's hashes match those in attestations and
-/// assessor packages for the same scan.
-pub fn build_full_result(scan_results: &[ScanResult]) -> Result<FullResult, OutputError> {
+/// Uses the pre-computed `replay_hash` from `ScanResult` rather than recomputing.
+/// This ensures the full result's hash matches those in attestations and assessor
+/// packages for the same scan.
+pub fn build_full_result(
+    scan_results: &[ScanResult],
+    identity_status: IdentityStatus,
+) -> Result<FullResult, OutputError> {
     if scan_results.is_empty() {
         return Err(OutputError::Build(
             "At least one scan result is required".to_string(),
@@ -48,10 +56,10 @@ pub fn build_full_result(scan_results: &[ScanResult]) -> Result<FullResult, Outp
         })
         .collect();
 
-    // Get pre-computed hashes from scan results
-    let (content_hash, evidence_hash) = combine_scan_hashes(scan_results)?;
+    // Get pre-computed replay hash from scan results
+    let replay_hash = combine_replay_hashes(scan_results)?;
 
     result_builder
-        .build_full_result(policies, content_hash, evidence_hash)
+        .build_full_result(policies, replay_hash, identity_status)
         .map_err(|e| e.into())
 }

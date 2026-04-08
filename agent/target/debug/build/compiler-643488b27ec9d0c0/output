@@ -1,0 +1,5 @@
+cargo:rerun-if-changed=build.rs
+cargo:rerun-if-env-changed=ESP_BUILD_PROFILE
+cargo:rerun-if-env-changed=ESP_CONFIG_DIR
+cargo:rerun-if-changed=/usr/local/cargo/git/checkouts/endpoint-state-policy-272f8293a633a1ec/c8c5874/config/development.toml
+cargo:warning=Generated constants from /usr/local/cargo/git/checkouts/endpoint-state-policy-272f8293a633a1ec/c8c5874/config/development.toml

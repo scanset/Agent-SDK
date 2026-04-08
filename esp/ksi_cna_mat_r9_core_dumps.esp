@@ -1,0 +1,97 @@
+# KSI-CNA-MAT: Rocky 9 Core Dump Restrictions
+# STIG: SV-257812 ProcessSizeMax=0, SV-257813 Storage=none
+#       SV-257814 limits.conf core=0, SV-257815 coredump.socket masked
+#       SV-257818 kdump disabled+masked
+
+META
+    esp_id `ksi-cna-mat-r9-core-dumps-001`
+    version `1.0.0`
+    dsl_schema_version `1.0.0`
+    platform `rocky9`
+    criticality `high`
+
+    title `KSI-CNA-MAT: Rocky 9 Core Dump Restrictions`
+    description `Validates core dumps are fully disabled at all layers - systemd coredump config, security limits, coredump socket masked, and kdump service disabled`
+    author `scanset-security`
+    tags `rocky9,stig,core-dumps,kdump,fedramp,KSI-CNA-MAT`
+
+    control_mapping `KSI:KSI-CNA-MAT`
+    control_objective `KSI-CNA-MAT`
+
+    assessment_method `TEST`
+    implementation_status `implemented`
+    responsible_role `system-admin`
+
+    control_origination `sp-system`
+    inherited_from `Rocky9:localhost:core-dump-hardening`
+    customer_responsibility `configuration`
+
+    remediation_days `7`
+    recommendation `Set ProcessSizeMax=0 and Storage=none in /etc/systemd/coredump.conf. Add * hard core 0 to /etc/security/limits.conf. Mask systemd-coredump.socket. Disable and mask kdump service.`
+
+    component_id `comp-r9-core-dumps`
+
+    impl_KSI_CNA_MAT `Attack surface reduction through core dump disablement is validated at four independent layers. The systemd coredump handler is validated to have ProcessSizeMax=0 (no backtrace generation) and Storage=none (no dump storage) in /etc/systemd/coredump.conf. The POSIX resource limit is validated to have core size hard-limited to 0 in /etc/security/limits.conf, preventing any process from generating a core dump regardless of systemd configuration. The systemd-coredump.socket is validated as masked, preventing the socket activation path. The kdump kernel crash dump service is validated as disabled and masked, preventing kernel-level crash dumps which could expose sensitive memory contents including cryptographic keys.`
+
+META_END
+
+DEF
+    OBJECT coredump_conf
+        path `/etc/systemd/coredump.conf`
+    OBJECT_END
+
+    OBJECT limits_conf
+        path `/etc/security/limits.conf`
+    OBJECT_END
+
+    OBJECT coredump_socket
+        unit_name `systemd-coredump.socket`
+    OBJECT_END
+
+    OBJECT kdump_service
+        unit_name `kdump.service`
+    OBJECT_END
+
+    STATE coredump_conf_disabled
+        content string contains `ProcessSizeMax=0`
+        content string contains `Storage=none`
+    STATE_END
+
+    STATE core_limit_zero
+        content string contains `* hard core 0`
+    STATE_END
+
+    STATE coredump_socket_masked
+        enabled string = `masked`
+    STATE_END
+
+    STATE kdump_disabled
+        enabled string = `disabled`
+    STATE_END
+
+    CRI AND
+        CTN file_content
+            TEST all all AND
+            STATE_REF coredump_conf_disabled
+            OBJECT_REF coredump_conf
+        CTN_END
+
+        CTN file_content
+            TEST all all AND
+            STATE_REF core_limit_zero
+            OBJECT_REF limits_conf
+        CTN_END
+
+        CTN systemd_service
+            TEST all all AND
+            STATE_REF coredump_socket_masked
+            OBJECT_REF coredump_socket
+        CTN_END
+
+        CTN systemd_service
+            TEST all all AND
+            STATE_REF kdump_disabled
+            OBJECT_REF kdump_service
+        CTN_END
+    CRI_END
+DEF_END

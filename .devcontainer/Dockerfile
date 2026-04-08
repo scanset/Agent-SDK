@@ -2,7 +2,7 @@
 # Cross-Compilation Support: Linux GNU, Linux musl, Windows GNU
 # Security-focused development environment
 
-FROM rust:1.85-bookworm
+FROM rust:1.92-bookworm
 
 WORKDIR /workspace
 

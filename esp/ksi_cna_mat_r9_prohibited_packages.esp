@@ -1,0 +1,145 @@
+# KSI-CNA-MAT: Rocky 9 Prohibited Packages
+# STIG: SV-257827 sendmail, SV-257828 nfs-utils, SV-257829 ypserv
+#       SV-257830 rsh-server, SV-257831 telnet-server, SV-257832 gssproxy
+#       SV-257833 iprutils, SV-257834 tuned, SV-257836 quagga
+#       SV-257837 xorg-x11-server-common (graphical display manager)
+
+META
+    esp_id `ksi-cna-mat-r9-prohibited-packages-001`
+    version `1.0.0`
+    dsl_schema_version `1.0.0`
+    platform `rocky9`
+    criticality `high`
+
+    title `KSI-CNA-MAT: Rocky 9 Prohibited Packages`
+    description `Validates that legacy, insecure, and unnecessary server packages are not installed, reducing the system attack surface`
+    author `scanset-security`
+    tags `rocky9,stig,packages,attack-surface,fedramp,KSI-CNA-MAT`
+
+    control_mapping `KSI:KSI-CNA-MAT`
+    control_objective `KSI-CNA-MAT`
+
+    assessment_method `TEST`
+    implementation_status `implemented`
+    responsible_role `system-admin`
+
+    control_origination `sp-system`
+    inherited_from `Rocky9:localhost:package-management`
+    customer_responsibility `configuration`
+
+    remediation_days `3`
+    recommendation `Remove all listed packages via dnf remove. Document any exceptions with the ISSO. A graphical display manager requires explicit ISSO approval.`
+
+    component_id `comp-r9-packages`
+
+    impl_KSI_CNA_MAT `Attack surface reduction through package removal is validated by confirming ten prohibited packages are not installed. sendmail, nfs-utils, ypserv, rsh-server, and telnet-server implement legacy protocols that transmit credentials in cleartext or have no authentication. gssproxy, iprutils, and tuned provide services not required for a minimal FedRAMP server deployment. quagga is a routing daemon with no place on a single-tenant application server. The graphical display manager (xorg-x11-server-common) is prohibited unless explicitly approved by the ISSO, as it expands the attack surface and is unnecessary on a headless server. Removal is validated at the RPM database level rather than by process state, ensuring packages cannot be activated even transiently.`
+
+META_END
+
+DEF
+    OBJECT sendmail_pkg
+        package_name `sendmail`
+    OBJECT_END
+
+    OBJECT nfs_utils_pkg
+        package_name `nfs-utils`
+    OBJECT_END
+
+    OBJECT ypserv_pkg
+        package_name `ypserv`
+    OBJECT_END
+
+    OBJECT rsh_server_pkg
+        package_name `rsh-server`
+    OBJECT_END
+
+    OBJECT telnet_server_pkg
+        package_name `telnet-server`
+    OBJECT_END
+
+    OBJECT gssproxy_pkg
+        package_name `gssproxy`
+    OBJECT_END
+
+    OBJECT iprutils_pkg
+        package_name `iprutils`
+    OBJECT_END
+
+    OBJECT tuned_pkg
+        package_name `tuned`
+    OBJECT_END
+
+    OBJECT quagga_pkg
+        package_name `quagga`
+    OBJECT_END
+
+    OBJECT xorg_pkg
+        package_name `xorg-x11-server-common`
+    OBJECT_END
+
+    STATE not_installed
+        installed boolean = false
+    STATE_END
+
+    CRI AND
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF not_installed
+            OBJECT_REF sendmail_pkg
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF not_installed
+            OBJECT_REF nfs_utils_pkg
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF not_installed
+            OBJECT_REF ypserv_pkg
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF not_installed
+            OBJECT_REF rsh_server_pkg
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF not_installed
+            OBJECT_REF telnet_server_pkg
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF not_installed
+            OBJECT_REF gssproxy_pkg
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF not_installed
+            OBJECT_REF iprutils_pkg
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF not_installed
+            OBJECT_REF tuned_pkg
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF not_installed
+            OBJECT_REF quagga_pkg
+        CTN_END
+
+        CTN rpm_package
+            TEST all all AND
+            STATE_REF not_installed
+            OBJECT_REF xorg_pkg
+        CTN_END
+    CRI_END
+DEF_END

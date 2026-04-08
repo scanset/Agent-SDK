@@ -17,29 +17,21 @@ use super::types::SigningResult;
 ///
 /// ```ignore
 /// let backend = create_backend()?;
-/// let signature = backend.sign_envelope_hashes(
-///     "sha256:abc123...",
-///     "sha256:def456...",
-/// )?;
+/// let signature = backend.sign_envelope_hash("sha256:abc123...")?;
 /// ```
 pub trait SigningBackend: Send + Sync {
-    /// Sign the envelope hashes
+    /// Sign the envelope replay hash
     ///
-    /// Creates a signature over `SHA256(content_hash || evidence_hash)`.
+    /// Creates a signature over `SHA256(replay_hash)`.
     ///
     /// # Arguments
     ///
-    /// * `content_hash` - The envelope's content hash (e.g., "sha256:abc...")
-    /// * `evidence_hash` - The envelope's evidence hash (e.g., "sha256:def...")
+    /// * `replay_hash` - The envelope's replay hash (e.g., "sha256:abc...")
     ///
     /// # Returns
     ///
     /// A `SignatureBlock` ready to be attached to the envelope.
-    fn sign_envelope_hashes(
-        &self,
-        content_hash: &str,
-        evidence_hash: &str,
-    ) -> SigningResult<SignatureBlock>;
+    fn sign_envelope_hash(&self, replay_hash: &str) -> SigningResult<SignatureBlock>;
 
     /// Get the algorithm identifier
     ///
@@ -83,13 +75,12 @@ pub trait SigningBackend: Send + Sync {
 // Helper Functions
 // ============================================================================
 
-/// Compute the data to be signed from envelope hashes
+/// Compute the data to be signed from the envelope replay hash
 ///
-/// Returns `SHA256(content_hash || evidence_hash)` as bytes.
-pub fn compute_signed_data(content_hash: &str, evidence_hash: &str) -> [u8; 32] {
+/// Returns `SHA256(replay_hash)` as bytes.
+pub fn compute_signed_data(replay_hash: &str) -> [u8; 32] {
     let mut hasher = Sha256::new();
-    hasher.update(content_hash.as_bytes());
-    hasher.update(evidence_hash.as_bytes());
+    hasher.update(replay_hash.as_bytes());
 
     let result = hasher.finalize();
     let mut output = [0u8; 32];
@@ -125,11 +116,10 @@ mod tests {
 
     #[test]
     fn test_compute_signed_data_deterministic() {
-        let content_hash = "sha256:abc123";
-        let evidence_hash = "sha256:def456";
+        let replay_hash = "sha256:abc123def456";
 
-        let result1 = compute_signed_data(content_hash, evidence_hash);
-        let result2 = compute_signed_data(content_hash, evidence_hash);
+        let result1 = compute_signed_data(replay_hash);
+        let result2 = compute_signed_data(replay_hash);
 
         assert_eq!(result1, result2);
         assert_eq!(result1.len(), 32);
@@ -137,8 +127,8 @@ mod tests {
 
     #[test]
     fn test_compute_signed_data_different_inputs() {
-        let result1 = compute_signed_data("sha256:aaa", "sha256:bbb");
-        let result2 = compute_signed_data("sha256:aaa", "sha256:ccc");
+        let result1 = compute_signed_data("sha256:aaa");
+        let result2 = compute_signed_data("sha256:bbb");
 
         assert_ne!(result1, result2);
     }

@@ -1,0 +1,150 @@
+# KSI-CNA-MAT / KSI-IAM-MFA / KSI-IAM-ELP: Rocky 9 Authentication Hardening
+# STIG: SV-257955 (HIGH) - no shosts.equiv files
+#       SV-257956 (HIGH) - no .shosts files
+#       SV-257984 (HIGH) - SSHD PermitEmptyPasswords no
+#       SV-257986 (HIGH) - SSHD UsePAM yes
+#       SV-258059 (HIGH) - only root has UID 0
+#       SV-258094 (HIGH) - no nullok in PAM config
+
+META
+    esp_id `ksi-cna-mat-iam-mfa-iam-elp-r9-auth-hardening-001`
+    version `1.0.0`
+    dsl_schema_version `1.0.0`
+    platform `rocky9`
+    criticality `critical`
+
+    title `KSI-CNA-MAT / KSI-IAM-MFA / KSI-IAM-ELP: Rocky 9 Authentication Hardening`
+    description `Validates prohibited rhost trust files are absent, SSH denies empty passwords and enforces PAM, only root has UID 0, and PAM does not permit null passwords`
+    author `scanset-security`
+    tags `rocky9,stig,ssh,pam,auth,fedramp,KSI-CNA-MAT,KSI-IAM-MFA,KSI-IAM-ELP`
+
+    control_mapping `KSI:KSI-CNA-MAT,KSI:KSI-IAM-MFA,KSI:KSI-IAM-ELP`
+    control_objective `KSI-CNA-MAT,KSI-IAM-MFA,KSI-IAM-ELP`
+
+    assessment_method `TEST`
+    implementation_status `implemented`
+    responsible_role `system-admin`
+
+    control_origination `sp-system`
+    inherited_from `Rocky9:localhost:auth-hardening`
+    customer_responsibility `configuration`
+
+    remediation_days `1`
+    recommendation `Remove any shosts.equiv and .shosts files. Set PermitEmptyPasswords no and UsePAM yes in sshd_config. Confirm no account other than root has UID 0. Run authselect enable-feature without-nullok to remove nullok from PAM.`
+
+    component_id `comp-r9-auth`
+
+    impl_KSI_CNA_MAT `Attack surface reduction for remote access is validated by confirming shosts.equiv and .shosts trust files do not exist on the system. These files implement host-based authentication which allows passwordless access from trusted hosts - a mechanism incompatible with any credential-based access control model and explicitly prohibited under FedRAMP. The file_metadata contract validates non-existence at the filesystem level rather than checking file content, ensuring the files cannot exist in any form.`
+
+    impl_KSI_IAM_MFA `Authentication strength for SSH access is validated at two levels. Empty password authentication is validated as disabled by confirming PermitEmptyPasswords no in the SSH daemon configuration, ensuring accounts with no password cannot authenticate over SSH. PAM integration is validated as enabled via UsePAM yes, ensuring the full PAM authentication stack including multi-factor enforcement, account lockout, and session controls is active for all SSH sessions. Null password capability in PAM is validated as absent by confirming nullok does not appear in /etc/pam.d/system-auth or /etc/pam.d/password-auth.`
+
+    impl_KSI_IAM_ELP `Least privilege for local account access is validated by confirming only the root account holds UID 0 in /etc/passwd. UID 0 grants unrestricted superuser access - any additional account with UID 0 would have equivalent root privileges regardless of its account name, bypassing all privilege separation controls. The file_content pattern_match validates the passwd file directly to confirm root is the sole UID 0 account.`
+
+META_END
+
+DEF
+    OBJECT sshd_config
+        path `/etc/ssh/sshd_config`
+    OBJECT_END
+
+    OBJECT system_auth
+        path `/etc/pam.d/system-auth`
+    OBJECT_END
+
+    OBJECT password_auth
+        path `/etc/pam.d/password-auth`
+    OBJECT_END
+
+    OBJECT passwd_file
+        path `/etc/passwd`
+    OBJECT_END
+
+    OBJECT shosts_equiv
+        path `/etc/shosts.equiv`
+    OBJECT_END
+
+    OBJECT dot_shosts
+        path `/root/.shosts`
+    OBJECT_END
+
+    # shosts.equiv must not exist
+    STATE shosts_equiv_absent
+        exists boolean = false
+    STATE_END
+
+    # .shosts must not exist
+    STATE dot_shosts_absent
+        exists boolean = false
+    STATE_END
+
+    # SSH must deny empty passwords
+    STATE ssh_no_empty_passwords
+        content string contains `PermitEmptyPasswords no`
+    STATE_END
+
+    # SSH must use PAM
+    STATE ssh_use_pam
+        content string contains `UsePAM yes`
+    STATE_END
+
+    # Only root has UID 0
+    STATE only_root_uid_zero
+        content string pattern_match `^root:.*:0:0:`
+    STATE_END
+
+    # PAM must not have nullok
+    STATE pam_no_nullok
+        content string not_contains `nullok`
+    STATE_END
+
+    CRI AND
+        # No shosts.equiv
+        CTN file_metadata
+            TEST all all AND
+            STATE_REF shosts_equiv_absent
+            OBJECT_REF shosts_equiv
+        CTN_END
+
+        # No .shosts
+        CTN file_metadata
+            TEST all all AND
+            STATE_REF dot_shosts_absent
+            OBJECT_REF dot_shosts
+        CTN_END
+
+        # SSH: no empty passwords
+        CTN file_content
+            TEST all all AND
+            STATE_REF ssh_no_empty_passwords
+            OBJECT_REF sshd_config
+        CTN_END
+
+        # SSH: PAM enabled
+        CTN file_content
+            TEST all all AND
+            STATE_REF ssh_use_pam
+            OBJECT_REF sshd_config
+        CTN_END
+
+        # Only root has UID 0
+        CTN file_content
+            TEST all all AND
+            STATE_REF only_root_uid_zero
+            OBJECT_REF passwd_file
+        CTN_END
+
+        # PAM system-auth: no nullok
+        CTN file_content
+            TEST all all AND
+            STATE_REF pam_no_nullok
+            OBJECT_REF system_auth
+        CTN_END
+
+        # PAM password-auth: no nullok
+        CTN file_content
+            TEST all all AND
+            STATE_REF pam_no_nullok
+            OBJECT_REF password_auth
+        CTN_END
+    CRI_END
+DEF_END

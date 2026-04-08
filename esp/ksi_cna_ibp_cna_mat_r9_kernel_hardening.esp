@@ -1,0 +1,329 @@
+# KSI-CNA-IBP / KSI-CNA-MAT: Rocky 9 Kernel Hardening
+# STIG: SV-257792 vsyscall=none, SV-257793 page_poison=1, SV-257794 init_on_free=1
+#       SV-257797 dmesg_restrict=1, SV-257798 perf_event_paranoid=2
+#       SV-257799 kexec_load_disabled=1, SV-257800 kptr_restrict=1
+#       SV-257801 protected_hardlinks=1, SV-257802 protected_symlinks=1
+#       SV-257803 core_pattern=|/bin/false, SV-257809 ASLR=2
+#       SV-257810 unprivileged_bpf=1, SV-257811 ptrace_scope=1
+#       SV-257816 user_namespaces=0, SV-257942 BPF JIT hardening
+#       SV-257804-808,880 kernel modules disabled
+
+META
+    esp_id `ksi-cna-ibp-cna-mat-r9-kernel-hardening-001`
+    version `1.0.0`
+    dsl_schema_version `1.0.0`
+    platform `rocky9`
+    criticality `high`
+
+    title `KSI-CNA-IBP / KSI-CNA-MAT: Rocky 9 Kernel Hardening`
+    description `Validates kernel parameters enforce memory protection, restrict privileged operations, disable dangerous syscalls, and prohibited kernel modules are blacklisted`
+    author `scanset-security`
+    tags `rocky9,stig,kernel,sysctl,modprobe,fedramp,KSI-CNA-IBP,KSI-CNA-MAT`
+
+    control_mapping `KSI:KSI-CNA-IBP,KSI:KSI-CNA-MAT`
+    control_objective `KSI-CNA-IBP,KSI-CNA-MAT`
+
+    assessment_method `TEST`
+    implementation_status `implemented`
+    responsible_role `system-admin`
+
+    control_origination `sp-system`
+    inherited_from `Rocky9:localhost:kernel-hardening`
+    customer_responsibility `configuration`
+
+    remediation_days `7`
+    recommendation `Apply kernel parameters via /etc/sysctl.d/99-stig.conf and run sysctl --system. Add kernel cmdline args via grubby and regenerate grub config. Add modprobe blacklist files in /etc/modprobe.d/.`
+
+    component_id `comp-r9-kernel`
+
+    impl_KSI_CNA_IBP `Isolation boundary protection at the kernel level is validated by confirming memory protection mechanisms are active: ASLR is set to full randomization (kernel.randomize_va_space=2), kernel pointer addresses are restricted from unprivileged access (kernel.kptr_restrict=1), the kernel message buffer is restricted (kernel.dmesg_restrict=1), and kernel profiling by nonprivileged users is prevented (kernel.perf_event_paranoid=2). Dangerous kernel operations are restricted: kexec kernel loading is disabled (kernel.kexec_load_disabled=1), unprivileged BPF system calls are blocked (kernel.unprivileged_bpf_disabled>=1), ptrace is restricted to descendant processes (kernel.yama.ptrace_scope=1), and user namespaces are disabled (user.max_user_namespaces=0). Prohibited kernel modules are blacklisted via modprobe configuration.`
+
+    impl_KSI_CNA_MAT `Attack surface reduction at the kernel level is validated by confirming discretionary access control is enforced on hardlinks and symlinks, core dump patterns are disabled, and prohibited network protocols (ATM, CAN, FireWire, SCTP, TIPC) and filesystems (cramfs) are blacklisted from loading. Kernel boot parameters are validated in /etc/default/grub to ensure hardening persists across kernel updates.`
+
+META_END
+
+DEF
+    # Kernel cmdline
+    OBJECT grub_default
+        path `/etc/default/grub`
+    OBJECT_END
+
+    # Modprobe blacklist files
+    OBJECT modprobe_atm
+        path `/etc/modprobe.d/atm.conf`
+    OBJECT_END
+
+    OBJECT modprobe_can
+        path `/etc/modprobe.d/can.conf`
+    OBJECT_END
+
+    OBJECT modprobe_firewire
+        path `/etc/modprobe.d/firewire-core.conf`
+    OBJECT_END
+
+    OBJECT modprobe_sctp
+        path `/etc/modprobe.d/sctp.conf`
+    OBJECT_END
+
+    OBJECT modprobe_tipc
+        path `/etc/modprobe.d/tipc.conf`
+    OBJECT_END
+
+    OBJECT modprobe_cramfs
+        path `/etc/modprobe.d/cramfs.conf`
+    OBJECT_END
+
+    # Sysctl objects
+    OBJECT dmesg_restrict
+        parameter `kernel.dmesg_restrict`
+    OBJECT_END
+
+    OBJECT perf_event_paranoid
+        parameter `kernel.perf_event_paranoid`
+    OBJECT_END
+
+    OBJECT kexec_load_disabled
+        parameter `kernel.kexec_load_disabled`
+    OBJECT_END
+
+    OBJECT kptr_restrict
+        parameter `kernel.kptr_restrict`
+    OBJECT_END
+
+    OBJECT protected_hardlinks
+        parameter `fs.protected_hardlinks`
+    OBJECT_END
+
+    OBJECT protected_symlinks
+        parameter `fs.protected_symlinks`
+    OBJECT_END
+
+    OBJECT core_pattern
+        parameter `kernel.core_pattern`
+    OBJECT_END
+
+    OBJECT aslr
+        parameter `kernel.randomize_va_space`
+    OBJECT_END
+
+    OBJECT unprivileged_bpf
+        parameter `kernel.unprivileged_bpf_disabled`
+    OBJECT_END
+
+    OBJECT ptrace_scope
+        parameter `kernel.yama.ptrace_scope`
+    OBJECT_END
+
+    OBJECT user_namespaces
+        parameter `user.max_user_namespaces`
+    OBJECT_END
+
+    # States - kernel cmdline
+    STATE grub_cmdline_hardened
+        content string contains `vsyscall=none`
+        content string contains `page_poison=1`
+        content string contains `init_on_free=1`
+        content string contains `pti=on`
+        content string contains `audit=1`
+    STATE_END
+
+    # States - modprobe blacklists
+    STATE atm_blacklisted
+        content string contains `install atm /bin/false`
+        content string contains `blacklist atm`
+    STATE_END
+
+    STATE can_blacklisted
+        content string contains `install can /bin/false`
+        content string contains `blacklist can`
+    STATE_END
+
+    STATE firewire_blacklisted
+        content string contains `install firewire-core /bin/false`
+        content string contains `blacklist firewire-core`
+    STATE_END
+
+    STATE sctp_blacklisted
+        content string contains `install sctp /bin/false`
+        content string contains `blacklist sctp`
+    STATE_END
+
+    STATE tipc_blacklisted
+        content string contains `install tipc /bin/false`
+        content string contains `blacklist tipc`
+    STATE_END
+
+    STATE cramfs_blacklisted
+        content string contains `install cramfs /bin/false`
+        content string contains `blacklist cramfs`
+    STATE_END
+
+    # States - sysctl
+    STATE dmesg_restricted
+        found boolean = true
+        value string = `1`
+    STATE_END
+
+    STATE perf_paranoid
+        found boolean = true
+        value string = `2`
+    STATE_END
+
+    STATE kexec_disabled
+        found boolean = true
+        value string = `1`
+    STATE_END
+
+    STATE kptr_restricted
+        found boolean = true
+        value string = `1`
+    STATE_END
+
+    STATE hardlinks_protected
+        found boolean = true
+        value string = `1`
+    STATE_END
+
+    STATE symlinks_protected
+        found boolean = true
+        value string = `1`
+    STATE_END
+
+    STATE core_pattern_disabled
+        found boolean = true
+        value string = `|/bin/false`
+    STATE_END
+
+    STATE aslr_full
+        found boolean = true
+        value string = `2`
+    STATE_END
+
+    STATE bpf_restricted
+        found boolean = true
+        value string = `1`
+    STATE_END
+
+    STATE ptrace_restricted
+        found boolean = true
+        value string = `1`
+    STATE_END
+
+    STATE namespaces_disabled
+        found boolean = true
+        value string = `0`
+    STATE_END
+
+    CRI AND
+        # Kernel cmdline
+        CTN file_content
+            TEST all all AND
+            STATE_REF grub_cmdline_hardened
+            OBJECT_REF grub_default
+        CTN_END
+
+        # Modprobe blacklists
+        CTN file_content
+            TEST all all AND
+            STATE_REF atm_blacklisted
+            OBJECT_REF modprobe_atm
+        CTN_END
+
+        CTN file_content
+            TEST all all AND
+            STATE_REF can_blacklisted
+            OBJECT_REF modprobe_can
+        CTN_END
+
+        CTN file_content
+            TEST all all AND
+            STATE_REF firewire_blacklisted
+            OBJECT_REF modprobe_firewire
+        CTN_END
+
+        CTN file_content
+            TEST all all AND
+            STATE_REF sctp_blacklisted
+            OBJECT_REF modprobe_sctp
+        CTN_END
+
+        CTN file_content
+            TEST all all AND
+            STATE_REF tipc_blacklisted
+            OBJECT_REF modprobe_tipc
+        CTN_END
+
+        CTN file_content
+            TEST all all AND
+            STATE_REF cramfs_blacklisted
+            OBJECT_REF modprobe_cramfs
+        CTN_END
+
+        # Sysctl parameters
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF dmesg_restricted
+            OBJECT_REF dmesg_restrict
+        CTN_END
+
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF perf_paranoid
+            OBJECT_REF perf_event_paranoid
+        CTN_END
+
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF kexec_disabled
+            OBJECT_REF kexec_load_disabled
+        CTN_END
+
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF kptr_restricted
+            OBJECT_REF kptr_restrict
+        CTN_END
+
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF hardlinks_protected
+            OBJECT_REF protected_hardlinks
+        CTN_END
+
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF symlinks_protected
+            OBJECT_REF protected_symlinks
+        CTN_END
+
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF core_pattern_disabled
+            OBJECT_REF core_pattern
+        CTN_END
+
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF aslr_full
+            OBJECT_REF aslr
+        CTN_END
+
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF bpf_restricted
+            OBJECT_REF unprivileged_bpf
+        CTN_END
+
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF ptrace_restricted
+            OBJECT_REF ptrace_scope
+        CTN_END
+
+        CTN sysctl_parameter
+            TEST all all AND
+            STATE_REF namespaces_disabled
+            OBJECT_REF user_namespaces
+        CTN_END
+    CRI_END
+DEF_END

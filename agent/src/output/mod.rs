@@ -9,18 +9,26 @@
 //!
 //! ## Hash Architecture
 //!
-//! All output formats use pre-computed hashes from `ScanResult`. The hashes are
-//! computed ONCE in `ExecutionEngine::execute()` and passed through unchanged.
-//! This ensures hash consistency across all output formats.
+//! All output formats use the pre-computed `replay_hash` from `ScanResult`. The hash
+//! is computed ONCE in `ExecutionEngine::execute()` via the `ReplayManifest` and
+//! passed through unchanged. This ensures hash consistency across all output formats.
 //!
 //! ```text
 //! ExecutionEngine::execute()
-//!     └── ExecutionManifest { content_hash, evidence_hash }
-//!             └── ScanResult { content_hash, evidence_hash }
-//!                     ├── build_attestation()    → uses same hashes
-//!                     ├── build_full_result()    → uses same hashes
-//!                     └── build_assessor_package() → uses same hashes
+//!     └── ReplayManifest { intent + contract + outcome per CTN }
+//!             └── replay_hash = SHA256(canonical manifest)
+//!                     └── ScanResult { replay_hash }
+//!                             ├── build_attestation()      → uses same hash
+//!                             ├── build_full_result()      → uses same hash
+//!                             └── build_assessor_package() → uses same hash
 //! ```
+//!
+//! ## Identity Status
+//!
+//! As of schema v1.2.0, all results include an `identity_status` field.
+//! The Agent SDK does not perform PKI bootstrap, so all results use
+//! `IdentityStatus::disabled` with the signing backend's ephemeral key ID
+//! as the signer identifier.
 
 mod assessor;
 mod attestation;
@@ -36,7 +44,8 @@ pub use summary::build_summary;
 
 use crate::config::OutputFormat;
 use crate::signing::{self, SigningBackend};
-use contract_kit::execution_api::ScanResult;
+use common::results::{IdentityStatus, generate_unsigned_signer_id};
+use crate::contract_kit::execution_api::ScanResult;
 
 /// Build output in the specified format
 ///
@@ -46,30 +55,33 @@ pub fn build_output(
     scan_results: &[ScanResult],
     format: OutputFormat,
 ) -> Result<String, OutputError> {
-    // Create signing backend once (reused for all signatures)
+    // Create signing backend once (reused for identity status and signing)
     let backend = create_signing_backend();
+
+    // Derive identity status from the backend (Agent SDK has no PKI)
+    let identity_status = build_identity_status(backend.as_deref());
 
     let json = match format {
         OutputFormat::Full => {
-            let mut result = build_full_result(scan_results)?;
+            let mut result = build_full_result(scan_results, identity_status)?;
             sign_if_available(&mut result.envelope, backend.as_deref());
             serde_json::to_string_pretty(&result)
                 .map_err(|e| OutputError::Serialization(e.to_string()))?
         }
         OutputFormat::Attestation => {
-            let mut result = build_attestation(scan_results)?;
+            let mut result = build_attestation(scan_results, identity_status)?;
             sign_if_available(&mut result.envelope, backend.as_deref());
             serde_json::to_string_pretty(&result)
                 .map_err(|e| OutputError::Serialization(e.to_string()))?
         }
         OutputFormat::Summary => {
-            // Summary format has no envelope - not signed
+            // Summary format has no envelope — not signed, no identity status
             let result = build_summary(scan_results);
             serde_json::to_string_pretty(&result)
                 .map_err(|e| OutputError::Serialization(e.to_string()))?
         }
         OutputFormat::Assessor => {
-            let mut result = build_assessor_package(scan_results)?;
+            let mut result = build_assessor_package(scan_results, identity_status)?;
             sign_if_available(&mut result.envelope, backend.as_deref());
             serde_json::to_string_pretty(&result)
                 .map_err(|e| OutputError::Serialization(e.to_string()))?
@@ -94,6 +106,23 @@ fn create_signing_backend() -> Option<Box<dyn SigningBackend>> {
     }
 }
 
+/// Build an `IdentityStatus` for the Agent SDK
+///
+/// The SDK does not perform PKI bootstrap, so identity is always `disabled`.
+/// The signer ID is derived from the signing backend's ephemeral key fingerprint
+/// when available, or a hostname-based fallback otherwise.
+fn build_identity_status(backend: Option<&dyn SigningBackend>) -> IdentityStatus {
+    let signer_id = backend
+        .and_then(|b| b.signer_id().ok())
+        .unwrap_or_else(|| {
+            let hostname = std::env::var("HOSTNAME")
+                .or_else(|_| std::env::var("COMPUTERNAME"))
+                .unwrap_or_else(|_| "unknown".to_string());
+            generate_unsigned_signer_id(&hostname, "sdk")
+        });
+    IdentityStatus::disabled(signer_id)
+}
+
 /// Sign an envelope if a backend is available
 ///
 /// Logs a warning if signing fails but does not return an error.
@@ -112,37 +141,32 @@ fn sign_if_available(
 // Hash Helpers
 // ============================================================================
 
-/// Combine hashes from multiple scan results
+/// Combine replay hashes from multiple scan results
 ///
-/// For single scan results, returns the hashes directly.
-/// For multiple scan results, combines them deterministically.
+/// For a single scan result, returns the replay hash directly.
+/// For multiple scan results, combines them deterministically by
+/// sorting and hashing the concatenation.
 ///
 /// ## Returns
 ///
-/// A tuple of (content_hash, evidence_hash) to pass to result builders.
-pub(crate) fn combine_scan_hashes(
-    scan_results: &[ScanResult],
-) -> Result<(String, String), OutputError> {
+/// A single `replay_hash` string to pass to result builders.
+pub(crate) fn combine_replay_hashes(scan_results: &[ScanResult]) -> Result<String, OutputError> {
     if scan_results.is_empty() {
         return Err(OutputError::Build(
             "At least one scan result is required".to_string(),
         ));
     }
 
-    // Single result: use hashes directly
+    // Single result: use hash directly
     if scan_results.len() == 1 {
         let result = scan_results
             .first()
             .ok_or_else(|| OutputError::Build("Empty scan results".to_string()))?;
-        return Ok((result.content_hash.clone(), result.evidence_hash.clone()));
+        return Ok(result.replay_hash.clone());
     }
 
     // Multiple results: combine hashes deterministically
-    let content_hash = combine_hashes_sorted(scan_results.iter().map(|r| &r.content_hash))?;
-
-    let evidence_hash = combine_hashes_sorted(scan_results.iter().map(|r| &r.evidence_hash))?;
-
-    Ok((content_hash, evidence_hash))
+    combine_hashes_sorted(scan_results.iter().map(|r| &r.replay_hash))
 }
 
 /// Combine multiple hashes into one (sorted for determinism)

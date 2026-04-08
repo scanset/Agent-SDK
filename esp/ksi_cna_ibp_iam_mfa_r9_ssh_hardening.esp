@@ -1,0 +1,85 @@
+# KSI-CNA-IBP / KSI-IAM-MFA: Rocky 9 SSH Hardening
+# STIG: SV-257981 banner, SV-257982 LogLevel, SV-257983 PubkeyAuthentication
+#       SV-257985 PermitRootLogin no, SV-257987 crypto policies
+#       SV-257992 no trusted hosts, SV-257993 no env override
+#       SV-257994 RekeyLimit, SV-257995/996 ClientAlive
+#       SV-258002 no compression, SV-258003 no GSSAPI
+#       SV-258004 no Kerberos, SV-258005 no rhosts
+#       SV-258006 no known hosts, SV-258007 no X11
+#       SV-258008 StrictModes, SV-258009 PrintLastLog
+#       SV-258011 no X11UseLocalhost no
+
+META
+    esp_id `ksi-cna-ibp-iam-mfa-r9-ssh-hardening-001`
+    version `1.0.0`
+    dsl_schema_version `1.0.0`
+    platform `rocky9`
+    criticality `high`
+
+    title `KSI-CNA-IBP / KSI-IAM-MFA: Rocky 9 SSH Hardening`
+    description `Validates SSH daemon configuration enforces secure remote access - no root login, no legacy auth methods, session controls, crypto policy alignment, and display of consent banner`
+    author `scanset-security`
+    tags `rocky9,stig,ssh,sshd,fedramp,KSI-CNA-IBP,KSI-IAM-MFA`
+
+    control_mapping `KSI:KSI-CNA-IBP,KSI:KSI-IAM-MFA`
+    control_objective `KSI-CNA-IBP,KSI-IAM-MFA`
+
+    assessment_method `TEST`
+    implementation_status `implemented`
+    responsible_role `system-admin`
+
+    control_origination `sp-system`
+    inherited_from `Rocky9:localhost:ssh-hardening`
+    customer_responsibility `configuration`
+
+    remediation_days `3`
+    recommendation `Configure /etc/ssh/sshd_config or drop-in files in /etc/ssh/sshd_config.d/ per STIG requirements. Restart sshd after changes. Ensure Include /etc/ssh/sshd_config.d/*.conf is present in sshd_config.`
+
+    component_id `comp-r9-ssh`
+
+    impl_KSI_CNA_IBP `SSH isolation boundary protection is validated by confirming legacy and insecure authentication methods are disabled. GSSAPI authentication is disabled (GSSAPIAuthentication no) to prevent Kerberos delegation attacks. Kerberos authentication is disabled (KerberosAuthentication no). Rhosts authentication is disabled (IgnoreRhosts yes). Trusted host authentication is disabled (HostbasedAuthentication no). X11 forwarding is disabled (X11Forwarding no) to prevent display hijacking. Compression is disabled or deferred until after authentication (Compression no or delayed). Session key renegotiation is enforced (RekeyLimit 1G 1h). Client alive checks terminate unresponsive sessions (ClientAliveInterval 600, ClientAliveCountMax 0).`
+
+    impl_KSI_IAM_MFA `SSH authentication controls are validated by confirming public key authentication is enabled (PubkeyAuthentication yes), direct root login is prohibited (PermitRootLogin no), the system-wide crypto policy is enforced (Include /etc/crypto-policies/back-ends/opensshserver.config), strict mode checking of home directory permissions is enabled (StrictModes yes), and the date and time of last logon is displayed (PrintLastLog yes). The consent banner is validated to be displayed before authentication (Banner /etc/issue or equivalent).`
+
+META_END
+
+DEF
+    OBJECT sshd_config
+        path `/etc/ssh/sshd_config`
+    OBJECT_END
+
+    STATE sshd_compliant
+        content string contains `PermitRootLogin no`
+        content string contains `PubkeyAuthentication yes`
+        content string contains `IgnoreRhosts yes`
+        content string contains `HostbasedAuthentication no`
+        content string contains `GSSAPIAuthentication no`
+        content string contains `KerberosAuthentication no`
+        content string contains `X11Forwarding no`
+        content string contains `StrictModes yes`
+        content string contains `PrintLastLog yes`
+        content string contains `Compression no`
+        content string contains `ClientAliveCountMax 0`
+        content string contains `RekeyLimit 1G`
+        content string contains `Banner /etc/issue`
+        content string contains `LogLevel VERBOSE`
+    STATE_END
+
+    STATE sshd_client_alive
+        content string contains `ClientAliveInterval`
+    STATE_END
+
+    CRI AND
+        CTN file_content
+            TEST all all AND
+            STATE_REF sshd_compliant
+            OBJECT_REF sshd_config
+        CTN_END
+
+        CTN file_content
+            TEST all all AND
+            STATE_REF sshd_client_alive
+            OBJECT_REF sshd_config
+        CTN_END
+    CRI_END
+DEF_END

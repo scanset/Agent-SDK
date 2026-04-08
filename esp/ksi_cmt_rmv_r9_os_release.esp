@@ -1,0 +1,57 @@
+# KSI-CMT-RMV: Rocky 9 Vendor-Supported Release
+# STIG: SV-257777 (HIGH) - RHEL 9 must be a vendor-supported release
+# Check: cat /etc/redhat-release -> must be 9.x release
+# Finding: installed version is not vendor-supported
+
+META
+    esp_id `ksi-cmt-rmv-r9-os-release-001`
+    version `1.0.0`
+    dsl_schema_version `1.0.0`
+    platform `rocky9`
+    criticality `critical`
+
+    title `KSI-CMT-RMV: Rocky 9 Vendor-Supported Release`
+    description `Validates that the operating system is a vendor-supported Rocky Linux 9 release. Unsupported releases do not receive security patches and represent an unmitigated vulnerability exposure.`
+    author `scanset-security`
+    tags `rocky9,stig,os-release,fedramp,KSI-CMT-RMV`
+
+    control_mapping `KSI:KSI-CMT-RMV`
+    control_objective `KSI-CMT-RMV`
+
+    assessment_method `TEST`
+    implementation_status `implemented`
+    responsible_role `system-admin`
+
+    control_origination `sp-system`
+    inherited_from `Rocky9:localhost:os-hardening`
+    customer_responsibility `configuration`
+
+    remediation_days `30`
+    recommendation `Upgrade to a supported Rocky Linux 9 minor release. Vendor support for Rocky Linux 9 runs through May 2032.`
+
+    component_id `comp-r9-os`
+
+    impl_KSI_CMT_RMV `Vendor support currency is validated by confirming the operating system ID is rocky and VERSION_ID begins with 9., confirming the system is running a supported Rocky Linux 9 minor release within the EL9 support lifecycle. The derived supported field is set to true only when both the distribution family (rocky/rhel/almalinux) and version prefix (9.) are confirmed. Unsupported OS releases do not receive security patches from the vendor and represent an unmitigated and growing vulnerability exposure that cannot be remediated through configuration alone.`
+
+META_END
+
+DEF
+    OBJECT os_info
+        release_file `/etc/os-release`
+    OBJECT_END
+
+    STATE vendor_supported_release
+        id string = `rocky`
+        supported boolean = true
+        platform_id string = `platform:el9`
+        version_id string starts `9.`
+    STATE_END
+
+    CRI AND
+        CTN os_release
+            TEST all all AND
+            STATE_REF vendor_supported_release
+            OBJECT_REF os_info
+        CTN_END
+    CRI_END
+DEF_END

@@ -1,5 +1,5 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Rust](https://img.shields.io/badge/rust-1.85%2B-orange.svg)](https://www.rust-lang.org/)
+[![Rust](https://img.shields.io/badge/rust-1.92%2B-orange.svg)](https://www.rust-lang.org/)
 [![GitHub tag](https://img.shields.io/github/v/tag/scanset/ESP-Agent-SDK?sort=semver)](https://github.com/scanset/ESP-Agent-SDK/tags)
 # ESP Agent SDK
 
@@ -7,42 +7,48 @@ Build compliance scanners using [Endpoint State Policy (ESP)](https://github.com
 
 ## Overview
 
-The ESP Agent SDK provides the tools to build scanners that execute ESP policies against endpoint systems. It includes reference implementations for common CTN (Collection Type Name) types and a ready-to-use CLI agent.
+The ESP Agent SDK is a self-contained CLI scanner that executes ESP policies against endpoint systems and outputs results as JSON. It includes reference implementations for common CTN (Collection Type Name) types via the bundled `contract_kit` module.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     ESP Agent SDK                           │
 ├─────────────────────────────────────────────────────────────┤
-│  agent/         CLI scanner application                     │
-│  contract_kit/  Reference collectors, executors, contracts  │
+│  agent/                                                     │
+│  ├── src/                                                   │
+│  │   ├── main.rs, cli.rs, scanner.rs, registry.rs ...       │
+│  │   └── contract_kit/   Collectors, executors, contracts   │
+│  ├── Cargo.toml                                             │
+│  └── Makefile                                               │
 ├─────────────────────────────────────────────────────────────┤
-│                  ESP Core (external)                        │
+│                  ESP Core (external, v1.2.0)                 │
 │  common, compiler, execution_engine                         │
 └─────────────────────────────────────────────────────────────┘
 ```
-
-## Crates
-
-| Crate | Description |
-|-------|-------------|
-| [`agent`](./agent/README.md) | CLI application for scanning ESP policies |
-| [`contract_kit`](./contract_kit/README.md) | Reference implementations and high-level scan API |
 
 ## Quick Start
 
 ### Build
 
 ```bash
-make build          # Build all crates
-make release        # Build optimized release
+cd agent/
+make build          # Debug build
+make release        # Optimized release build
 ```
 
 ### Run
 
 ```bash
-make run ESP=policy.esp                    # Scan single policy
-make run-batch ESP=/path/to/policies/      # Scan directory
-make run-full ESP=policy.esp               # Output full results to JSON
+# Scan a single policy, console output only
+make run ESP=../esp/policy.esp
+
+# Full results to JSON file
+make run-full ESP=../esp/policy.esp
+
+# Assessor package for audit/3PAO
+make run-assessor ESP=../esp/ksi_cna_mat_iam_mfa_elp_r9_auth_hardening.esp
+
+# Batch scan a directory
+make run-batch ESP=../esp/
 ```
 
 ### Cross-Compilation
@@ -71,7 +77,7 @@ make pre-commit     # Format, lint, test
 
 ## Requirements
 
-- Rust 1.85+
+- Rust 1.92+
 - For cross-compilation: `mingw-w64` (Windows), `musl-tools` (static Linux)
 
 ### Development Environment
@@ -83,6 +89,7 @@ Open the repository in VS Code and select "Reopen in Container" when prompted. T
 **Manual Docker:**
 
 ```bash
+cd agent/
 make docker-build
 ```
 

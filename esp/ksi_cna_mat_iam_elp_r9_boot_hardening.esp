@@ -1,0 +1,95 @@
+# KSI-CNA-MAT / KSI-IAM-ELP: Rocky 9 Boot Hardening
+# STIG: SV-257784 (HIGH) - systemd Ctrl-Alt-Delete burst disabled
+#       SV-257785 (HIGH) - x86 Ctrl-Alt-Delete target masked
+#       SV-257789 (HIGH) - GRUB superuser name must not be common
+# Checks:
+#   grep -i ctrl /etc/systemd/system.conf -> CtrlAltDelBurstAction=none
+#   systemctl status ctrl-alt-del.target  -> enabled = masked
+#   grep -A1 superusers /etc/grub2.cfg    -> not root/admin/administrator
+
+META
+    esp_id `ksi-cna-mat-iam-elp-r9-boot-hardening-001`
+    version `1.0.0`
+    dsl_schema_version `1.0.0`
+    platform `rocky9`
+    criticality `critical`
+
+    title `KSI-CNA-MAT / KSI-IAM-ELP: Rocky 9 Boot Hardening`
+    description `Validates Ctrl-Alt-Delete is disabled at both the systemd burst and x86 target levels, and the GRUB2 superuser account uses a non-common name with a password hash configured`
+    author `scanset-security`
+    tags `rocky9,stig,boot,grub,ctrl-alt-del,fedramp,KSI-CNA-MAT,KSI-IAM-ELP`
+
+    control_mapping `KSI:KSI-CNA-MAT,KSI:KSI-IAM-ELP`
+    control_objective `KSI-CNA-MAT,KSI-IAM-ELP`
+
+    assessment_method `TEST`
+    implementation_status `implemented`
+    responsible_role `system-admin`
+
+    control_origination `sp-system`
+    inherited_from `Rocky9:localhost:boot-hardening`
+    customer_responsibility `configuration`
+
+    remediation_days `7`
+    recommendation `Set CtrlAltDelBurstAction=none in /etc/systemd/system.conf. Mask ctrl-alt-del.target via systemctl mask. Configure a non-default GRUB superuser name in /etc/grub.d/01_users and run grub2-mkconfig.`
+
+    component_id `comp-r9-boot`
+
+    impl_KSI_CNA_MAT `Attack surface reduction for the boot process is validated by confirming two independent Ctrl-Alt-Delete disable mechanisms are in effect. The systemd burst action is validated by confirming CtrlAltDelBurstAction=none is set in /etc/systemd/system.conf, preventing a seven-keystroke burst sequence from rebooting the system. The x86 Ctrl-Alt-Delete target is validated by confirming ctrl-alt-del.target is masked in systemd, preventing a single three-key sequence from triggering a reboot. Both must be disabled independently - masking the target alone does not prevent the burst sequence, and disabling the burst action alone does not prevent a single Ctrl-Alt-Delete event.`
+
+    impl_KSI_IAM_ELP `Least privilege for boot-time access is validated by confirming the GRUB2 bootloader superuser account is configured with a non-common name. The superuser_is_common_name field is validated as false, confirming the account name is not root, admin, administrator, grub, or boot - names that are easily guessable by an attacker with physical access. A password hash entry is confirmed present for the superuser via has_password = true, ensuring the account cannot be used without a credential.`
+
+META_END
+
+DEF
+    OBJECT systemd_conf
+        path `/etc/systemd/system.conf`
+    OBJECT_END
+
+    OBJECT ctrl_alt_del_target
+        unit_name `ctrl-alt-del.target`
+    OBJECT_END
+
+    OBJECT grub_cfg
+        config_path `/etc/grub2.cfg`
+    OBJECT_END
+
+    # CtrlAltDelBurstAction=none must be present in system.conf
+    STATE ctrl_alt_del_burst_disabled
+        content string contains `CtrlAltDelBurstAction=none`
+    STATE_END
+
+    # ctrl-alt-del.target must be masked
+    STATE ctrl_alt_del_target_masked
+        found boolean = true
+        enabled string = `masked`
+    STATE_END
+
+    # GRUB superuser must exist, have a password, and not use a common name
+    STATE grub_superuser_secure
+        found boolean = true
+        has_superuser boolean = true
+        has_password boolean = true
+        superuser_is_common_name boolean = false
+    STATE_END
+
+    CRI AND
+        CTN file_content
+            TEST all all AND
+            STATE_REF ctrl_alt_del_burst_disabled
+            OBJECT_REF systemd_conf
+        CTN_END
+
+        CTN systemd_service
+            TEST all all AND
+            STATE_REF ctrl_alt_del_target_masked
+            OBJECT_REF ctrl_alt_del_target
+        CTN_END
+
+        CTN grub_config
+            TEST all all AND
+            STATE_REF grub_superuser_secure
+            OBJECT_REF grub_cfg
+        CTN_END
+    CRI_END
+DEF_END
