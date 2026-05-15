@@ -3,9 +3,10 @@
 **/*.rs.bk
 *.pdb
 
-# Cargo lock for libraries (keep for binaries)
-# Uncomment if this is a library-only workspace
-Cargo.lock
+# Cargo.lock is intentionally tracked.
+# This crate ships a binary (`esp_agent`) alongside the library; committing
+# Cargo.lock pins the dependency set for reproducible CI builds, reproducible
+# release artifacts, and accurate `cargo audit` results.
 
 # Build artifacts
 *.dll
