@@ -1,4 +1,4 @@
-//! TCP Listener Collector
+//! `linux_tcp_listener` Collector
 //!
 //! Collects information about TCP ports in LISTEN state.
 //! - Windows: Uses IP Helper API (GetExtendedTcpTable)
@@ -10,17 +10,17 @@ use execution_engine::strategies::{CollectedData, CollectionError, CtnContract, 
 use execution_engine::types::common::ResolvedValue;
 use execution_engine::types::execution_context::{ExecutableObject, ExecutableObjectElement};
 
-use crate::contract_kit::commands::tcp_listener::check_port_listening;
+use crate::contract_kit::commands::linux_tcp_listener::check_port_listening;
 
-/// Collector for TCP listener information
-pub struct TcpListenerCollector {
+/// Collector for `linux_tcp_listener` CTN
+pub struct LinuxTcpListenerCollector {
     id: String,
 }
 
-impl TcpListenerCollector {
+impl LinuxTcpListenerCollector {
     pub fn new() -> Self {
         Self {
-            id: "tcp_listener_collector".to_string(),
+            id: "linux_tcp_listener_collector".to_string(),
         }
     }
 
@@ -84,13 +84,13 @@ impl TcpListenerCollector {
     }
 }
 
-impl Default for TcpListenerCollector {
+impl Default for LinuxTcpListenerCollector {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl CtnDataCollector for TcpListenerCollector {
+impl CtnDataCollector for LinuxTcpListenerCollector {
     fn collect_for_ctn_with_hints(
         &self,
         object: &ExecutableObject,
@@ -120,7 +120,7 @@ impl CtnDataCollector for TcpListenerCollector {
         // Build collected data
         let mut data = CollectedData::new(
             object.identifier.clone(),
-            "tcp_listener".to_string(),
+            "linux_tcp_listener".to_string(),
             self.id.clone(),
         );
 
@@ -155,11 +155,11 @@ impl CtnDataCollector for TcpListenerCollector {
     }
 
     fn supported_ctn_types(&self) -> Vec<String> {
-        vec!["tcp_listener".to_string()]
+        vec!["linux_tcp_listener".to_string()]
     }
 
     fn validate_ctn_compatibility(&self, contract: &CtnContract) -> Result<(), CollectionError> {
-        if contract.ctn_type != "tcp_listener" {
+        if contract.ctn_type != "linux_tcp_listener" {
             return Err(CollectionError::CtnContractValidation {
                 reason: format!(
                     "Incompatible CTN type: expected 'tcp_listener', got '{}'",
@@ -185,13 +185,13 @@ mod tests {
 
     #[test]
     fn test_collector_id() {
-        let collector = TcpListenerCollector::new();
-        assert_eq!(collector.collector_id(), "tcp_listener_collector");
+        let collector = LinuxTcpListenerCollector::new();
+        assert_eq!(collector.collector_id(), "linux_tcp_listener_collector");
     }
 
     #[test]
     fn test_supported_ctn_types() {
-        let collector = TcpListenerCollector::new();
-        assert_eq!(collector.supported_ctn_types(), vec!["tcp_listener"]);
+        let collector = LinuxTcpListenerCollector::new();
+        assert_eq!(collector.supported_ctn_types(), vec!["linux_tcp_listener"]);
     }
 }

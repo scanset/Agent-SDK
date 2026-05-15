@@ -17,11 +17,11 @@
 //! The Agent SDK always provides `IdentityStatus::disabled` since it does
 //! not perform PKI bootstrap.
 
-use common::results::{
-    AgentInfo, AssessorPackage, Criticality, Evidence, HostInfo, IdentityStatus, ResultBuilder,
-    builder::AssessorInput,
-};
 use crate::contract_kit::execution_api::ScanResult;
+use common::results::{
+    builder::AssessorInput, AgentInfo, AssessorPackage, Criticality, HostInfo, IdentityStatus,
+    ResultBuilder,
+};
 
 use super::OutputError;
 use crate::output::combine_replay_hashes;

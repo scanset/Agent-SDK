@@ -5,7 +5,7 @@ pub mod computed_values;
 pub mod file_content;
 pub mod file_metadata;
 pub mod json_record;
-pub mod tcp_listener;
+pub mod linux_tcp_listener;
 
 // Linux-only executors
 #[cfg(target_os = "linux")]
@@ -28,7 +28,7 @@ pub use computed_values::ComputedValuesExecutor;
 pub use file_content::FileContentExecutor;
 pub use file_metadata::FileMetadataExecutor;
 pub use json_record::JsonRecordExecutor;
-pub use tcp_listener::TcpListenerExecutor;
+pub use linux_tcp_listener::LinuxTcpListenerExecutor;
 
 // Linux-only re-exports
 #[cfg(target_os = "linux")]

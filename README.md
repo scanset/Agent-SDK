@@ -20,7 +20,7 @@ The ESP Agent SDK is a self-contained CLI scanner that executes ESP policies aga
 │  ├── Cargo.toml                                             │
 │  └── Makefile                                               │
 ├─────────────────────────────────────────────────────────────┤
-│                  ESP Core (external, v1.2.0)                 │
+│                  ESP Core (external, v2.2.3)                │
 │  common, compiler, execution_engine                         │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -41,15 +41,17 @@ make release        # Optimized release build
 # Scan a single policy, console output only
 make run ESP=../esp/policy.esp
 
-# Full results to JSON file
-make run-full ESP=../esp/policy.esp
+# Scan a single policy and write the signed AssessorPackage envelope to a file
+make run-output ESP=../esp/policy.esp OUT=assessor_package.json
 
-# Assessor package for audit/3PAO
-make run-assessor ESP=../esp/ksi_cna_mat_iam_mfa_elp_r9_auth_hardening.esp
-
-# Batch scan a directory
-make run-batch ESP=../esp/
+# Batch scan a directory of policies (one envelope per run)
+make run-batch ESP=../esp/ OUT=assessor_package.json
 ```
+
+Every scan produces a single signed `AssessorPackage` envelope covering all
+policies the run touched. Results are printed to the console unless `--quiet`
+is set; `--output` (or `make run-output OUT=...`) also writes the JSON envelope
+to a file.
 
 ### Cross-Compilation
 

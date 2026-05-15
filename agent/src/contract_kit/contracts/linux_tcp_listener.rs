@@ -1,4 +1,4 @@
-//! TCP Listener CTN contract
+//! `linux_tcp_listener` CTN contract
 //!
 //! Validates whether a TCP port is listening on the local system.
 //! Used for runtime validation of network services.
@@ -9,11 +9,11 @@ use execution_engine::strategies::{
 };
 use execution_engine::types::common::{DataType, Operation};
 
-/// Create contract for tcp_listener CTN type
+/// Create contract for `linux_tcp_listener` CTN type
 ///
 /// Checks if a TCP port is listening on the local system by reading /proc/net/tcp.
-pub fn create_tcp_listener_contract() -> CtnContract {
-    let mut contract = CtnContract::new("tcp_listener".to_string());
+pub fn create_linux_tcp_listener_contract() -> CtnContract {
+    let mut contract = CtnContract::new("linux_tcp_listener".to_string());
 
     // Object requirements
     contract
@@ -85,7 +85,7 @@ pub fn create_tcp_listener_contract() -> CtnContract {
 
     // Collection strategy
     contract.collection_strategy = CollectionStrategy {
-        collector_type: "tcp_listener".to_string(),
+        collector_type: "linux_tcp_listener".to_string(),
         collection_mode: CollectionMode::Metadata,
         required_capabilities: vec!["procfs_access".to_string()],
         performance_hints: PerformanceHints {

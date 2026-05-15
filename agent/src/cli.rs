@@ -1,36 +1,32 @@
-//! Command-line interface parsing
+//! Command-line interface parsing.
 //!
-//! Handles argument parsing, validation, and help text generation.
+//! v2.x of the engine produces a single `AssessorPackage` envelope per scan,
+//! so there is no `--format` flag — the only options are quiet mode and an
+//! optional output filename.
 
 use std::path::PathBuf;
 
-use crate::config::{OutputFormat, ScanConfig};
+use crate::config::ScanConfig;
 
-/// CLI parsing result
+/// CLI parsing result.
 pub enum CliResult {
-    /// Run scan with this configuration
     Run(ScanConfig),
-    /// Show help and exit
     Help,
-    /// Error with message
     Error(String),
 }
 
-/// Parse command-line arguments
+/// Parse command-line arguments.
 pub fn parse_args(args: &[String]) -> CliResult {
     let program_name = args.first().map(|s| s.as_str()).unwrap_or("esp-agent");
 
     let mut input_path: Option<&str> = None;
     let mut output_file: Option<PathBuf> = None;
     let mut quiet = false;
-    let mut output_format = OutputFormat::Full;
 
     let mut i = 1;
     while i < args.len() {
         match args.get(i).map(|s| s.as_str()) {
-            Some("--help" | "-h") => {
-                return CliResult::Help;
-            }
+            Some("--help" | "-h") => return CliResult::Help,
             Some("--quiet" | "-q") => {
                 quiet = true;
             }
@@ -41,34 +37,15 @@ pub fn parse_args(args: &[String]) -> CliResult {
                     None => return CliResult::Error("--output requires a filename".to_string()),
                 }
             }
-            Some("--format" | "-f") => {
-                i += 1;
-                match args.get(i).map(|s| s.as_str()) {
-                    Some("full") => output_format = OutputFormat::Full,
-                    Some("summary") => output_format = OutputFormat::Summary,
-                    Some("attestation") => output_format = OutputFormat::Attestation,
-                    Some("assessor") => output_format = OutputFormat::Assessor,
-                    Some(other) => {
-                        return CliResult::Error(format!(
-                            "Unknown format '{}'. Use: full, summary, attestation, assessor",
-                            other
-                        ));
-                    }
-                    None => return CliResult::Error("--format requires a value".to_string()),
-                }
-            }
             Some(arg) if !arg.starts_with('-') => {
                 input_path = Some(arg);
             }
-            Some(arg) => {
-                return CliResult::Error(format!("Unknown option: {}", arg));
-            }
+            Some(arg) => return CliResult::Error(format!("Unknown option: {}", arg)),
             None => break,
         }
         i += 1;
     }
 
-    // Validate input path
     let input_path = match input_path {
         Some(p) => PathBuf::from(p),
         None => {
@@ -86,19 +63,16 @@ pub fn parse_args(args: &[String]) -> CliResult {
     CliResult::Run(ScanConfig {
         input_path,
         output_file,
-        output_format,
         quiet,
     })
 }
 
-/// Print usage information
 #[allow(dead_code)]
 pub fn print_usage(program_name: &str) {
     eprintln!("Usage: {} [OPTIONS] <file.esp|directory>", program_name);
     eprintln!("       {} --help", program_name);
 }
 
-/// Print full help text
 pub fn print_help(program_name: &str) {
     println!("ESP Compliance Agent v{}", env!("CARGO_PKG_VERSION"));
     println!("Compliance scanning using ESP policy files\n");
@@ -120,21 +94,13 @@ pub fn print_help(program_name: &str) {
     println!("OPTIONS:");
     println!("    -h, --help                  Show this help message");
     println!("    -q, --quiet                 Suppress console output");
-    println!("    -o, --output <file>         Write results to JSON file (optional)");
-    println!("    -f, --format <format>       Output format: full (default), summary, attestation, assessor");
+    println!("    -o, --output <file>         Write the signed AssessorPackage JSON to <file>");
     println!();
 
-    println!("OUTPUT FORMATS:");
-    println!("    full          Complete results with findings and evidence (default)");
-    println!("    summary       Minimal output with pass/fail counts only");
-    println!("    attestation   CUI-free format safe for network transport");
-    println!("    assessor      Full package with reproducibility info for assessors");
-    println!();
-
-    println!("BEHAVIOR:");
-    println!("    Results are always printed to the console (unless --quiet is set).");
-    println!("    Use --output to additionally save results to a JSON file.");
-    println!("    All formats produce a single envelope containing all scanned policies.");
+    println!("OUTPUT:");
+    println!("    Results are printed to the console unless --quiet is set.");
+    println!("    Use --output to additionally save the signed AssessorPackage envelope");
+    println!("    to a JSON file. Every scan produces one envelope covering all policies.");
     println!();
 
     println!("EXIT CODES:");
@@ -150,10 +116,6 @@ pub fn print_help(program_name: &str) {
     );
     println!(
         "    {} --output results.json policy.esp            # Console + file",
-        program_name
-    );
-    println!(
-        "    {} --format attestation -o out.json policy.esp # Attestation to file",
         program_name
     );
     println!(

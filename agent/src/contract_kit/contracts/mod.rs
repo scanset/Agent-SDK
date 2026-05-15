@@ -4,7 +4,7 @@
 pub mod computed_values;
 pub mod file_contracts;
 pub mod json_contracts;
-pub mod tcp_listener_contracts;
+pub mod linux_tcp_listener;
 
 // Linux-only contracts
 #[cfg(target_os = "linux")]
@@ -26,7 +26,7 @@ pub mod systemd_service_contracts;
 pub use computed_values::create_computed_values_contract;
 pub use file_contracts::{create_file_content_contract, create_file_metadata_contract};
 pub use json_contracts::create_json_record_contract;
-pub use tcp_listener_contracts::create_tcp_listener_contract;
+pub use linux_tcp_listener::create_linux_tcp_listener_contract;
 
 // Linux-only re-exports
 #[cfg(target_os = "linux")]

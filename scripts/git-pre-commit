@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+# Git pre-commit hook for the ESP Agent SDK. Installed by `make install-hooks`.
+#
+# This is the FULL gate. It catches every failure mode that CI also gates on,
+# so a clean local commit guarantees a clean CI run:
+#
+#   1. Formatting        — `cargo fmt --all -- --check`
+#   2. Strict lint       — `cargo clippy ... -D unwrap_used -D expect_used -D panic -D indexing_slicing`
+#   3. Test suite        — `cargo test --all-features`
+#   4. SBOM freshness    — if Cargo.lock is in the commit, regenerate SBOM
+#                          and require docs/sbom/ to be clean afterwards.
+#
+# Slower than ESP's two-step hook, but in exchange every commit is "ready
+# to push" without a separate `make ready` step.
+#
+# Skip the hook for an individual commit with: git commit --no-verify
+
+set -eu
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+AGENT_DIR="$REPO_ROOT/agent"
+
+# Skip hook entirely if no relevant files changed (allows docs-only or
+# config-only commits to bypass without unpacking a cargo workspace).
+if ! git diff --cached --name-only --diff-filter=AM \
+    | grep -qE '\.(rs|toml|lock)$'; then
+    exit 0
+fi
+
+cd "$AGENT_DIR"
+
+# -----------------------------------------------------------------------------
+# 1. Format check
+# -----------------------------------------------------------------------------
+echo "→ pre-commit: cargo fmt --check"
+if ! cargo fmt --all -- --check; then
+    cat <<EOF
+
+✗ Formatting check failed.
+
+  Fix:    cd agent && make format
+          git add -u
+          git commit  (retry)
+EOF
+    exit 1
+fi
+
+# -----------------------------------------------------------------------------
+# 2. Strict clippy
+# -----------------------------------------------------------------------------
+echo "→ pre-commit: cargo clippy (strict)"
+if ! cargo clippy --all-targets --all-features -- \
+        -D warnings \
+        -D clippy::unwrap_used \
+        -D clippy::expect_used \
+        -D clippy::panic \
+        -D clippy::indexing_slicing; then
+    cat <<EOF
+
+✗ Clippy (strict) failed.
+
+  Auto-fix what's mechanical:  cd agent && make lint-fix
+  Then re-review the diff, re-stage, and re-commit.
+EOF
+    exit 1
+fi
+
+# -----------------------------------------------------------------------------
+# 3. Test suite
+# -----------------------------------------------------------------------------
+echo "→ pre-commit: cargo test (all-features)"
+if ! cargo test --all-features --no-fail-fast; then
+    cat <<EOF
+
+✗ Test suite failed.
+
+  Run locally:  cd agent && make test
+EOF
+    exit 1
+fi
+
+# -----------------------------------------------------------------------------
+# 4. SBOM freshness — only if Cargo.lock changed
+# -----------------------------------------------------------------------------
+if git diff --cached --name-only --diff-filter=AM | grep -qE '(^|/)agent/Cargo\.lock$|^Cargo\.lock$'; then
+    echo "→ pre-commit: Cargo.lock changed; regenerating SBOM"
+    if ! make --silent sbom; then
+        echo ""
+        echo "✗ make sbom failed."
+        exit 1
+    fi
+    cd "$REPO_ROOT"
+    if ! git diff --exit-code -- docs/sbom/ > /dev/null 2>&1; then
+        cat <<EOF
+
+✗ SBOM was stale. It has been regenerated.
+
+  Fix:    git add docs/sbom/
+          git commit --amend --no-edit   (or re-commit)
+EOF
+        exit 1
+    fi
+fi
+
+echo "✓ pre-commit gate passed."

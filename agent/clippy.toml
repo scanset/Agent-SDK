@@ -1,7 +1,7 @@
 # Clippy Security Configuration
 # NIST SP 800-218 Implements: PW.3.2
 
-msrv = "1.85.0"
+msrv = "1.92.0"
 avoid-breaking-exported-api = false
 
 # Prevent unsafe memory operations

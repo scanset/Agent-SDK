@@ -2,12 +2,13 @@
 # Development, testing, and building commands
 # Cross-Compilation Support: Linux GNU, Linux musl, Windows GNU
 
-.PHONY: help build build-all test lint clean check security audit format docs dev release \
-        run run-summary run-attestation run-full run-assessor run-batch run-release \
+.PHONY: help build build-all test lint clean check security audit deny sbom format docs dev release \
+        run run-output run-batch run-release \
         build-win release-win check-win lint-win test-win \
         build-musl release-musl check-musl lint-musl \
         build-linux release-linux \
-        pre-commit ci docker-build toolchain-info
+        pre-commit ready ci docker-build toolchain-info \
+        install install-tools install-hooks
 
 # Default target
 help:
@@ -43,11 +44,8 @@ help:
 	@echo ""
 	@echo "Running:"
 	@echo "  make run ESP=<file>              - Run agent (console only)"
-	@echo "  make run-summary ESP=<file>      - Run with summary output"
-	@echo "  make run-attestation ESP=<file>  - Run with attestation output"
-	@echo "  make run-full ESP=<file>         - Run with full results output"
-	@echo "  make run-assessor ESP=<file>     - Run with assessor package output"
-	@echo "  make run-batch ESP=<dir>         - Batch run with full results"
+	@echo "  make run-output ESP=<file>       - Run + write signed AssessorPackage JSON"
+	@echo "  make run-batch ESP=<dir>         - Batch run over a directory of policies"
 	@echo "  make run-release ESP=<file>      - Run in release mode"
 	@echo ""
 	@echo "Testing:"
@@ -66,9 +64,10 @@ help:
 	@echo "  make format-check     - Check code formatting"
 	@echo ""
 	@echo "Security:"
-	@echo "  make security         - Run all security checks"
-	@echo "  make audit            - Check for vulnerabilities"
-	@echo "  make deny             - Check dependency policies"
+	@echo "  make security         - audit + deny + sbom (full gate)"
+	@echo "  make audit            - Check for vulnerabilities (cargo-audit)"
+	@echo "  make deny             - Check dependency policies (cargo-deny)"
+	@echo "  make sbom             - Generate CycloneDX SBOM under ../docs/sbom/"
 	@echo ""
 	@echo "Docker:"
 	@echo "  make docker-build     - Build development Docker image"
@@ -78,8 +77,14 @@ help:
 	@echo "  make docs-all         - Generate all documentation"
 	@echo ""
 	@echo "Pre-commit & CI:"
-	@echo "  make pre-commit       - Run pre-commit checks"
+	@echo "  make install-hooks    - Install scripts/git-pre-commit into .git/hooks/"
+	@echo "  make pre-commit       - Run pre-commit gate manually (fmt + lint + test)"
+	@echo "  make ready            - format + sbom + lint + test (run before push)"
 	@echo "  make ci               - Run full CI checks (all targets)"
+	@echo ""
+	@echo "Installation:"
+	@echo "  make install          - Install esp_agent to ~/.cargo/bin"
+	@echo "  make install-tools    - Install dev tools (cargo-audit, cargo-deny, cargo-cyclonedx, …)"
 	@echo ""
 	@echo "Utilities:"
 	@echo "  make toolchain-info   - Show Rust toolchain information"
@@ -88,7 +93,7 @@ help:
 	@echo ""
 	@echo "Examples:"
 	@echo "  make run ESP=policy.esp"
-	@echo "  make run-full ESP=policy.esp"
+	@echo "  make run-output ESP=policy.esp OUT=out.json"
 	@echo "  make run-batch ESP=/path/to/policies/"
 	@echo "  make release-all"
 	@echo ""
@@ -218,45 +223,23 @@ ifndef ESP
 endif
 	cargo run -- $(ESP) $(ARGS)
 
-# Run with summary output format
-run-summary:
+# Run and write the signed AssessorPackage envelope to a JSON file.
+# Override the filename via OUT=path/to/file.json; defaults to assessor_package.json.
+OUT ?= assessor_package.json
+run-output:
 ifndef ESP
-	@echo "Usage: make run-summary ESP=<file.esp|directory>"
+	@echo "Usage: make run-output ESP=<file.esp|directory> [OUT=path.json]"
 	@exit 1
 endif
-	cargo run -- $(ESP) --format summary --output summary.json $(ARGS)
+	cargo run -- $(ESP) --output $(OUT) $(ARGS)
 
-# Run with attestation output format
-run-attestation:
-ifndef ESP
-	@echo "Usage: make run-attestation ESP=<file.esp|directory>"
-	@exit 1
-endif
-	cargo run -- $(ESP) --format attestation --output attestation.json $(ARGS)
-
-# Run with full results output format
-run-full:
-ifndef ESP
-	@echo "Usage: make run-full ESP=<file.esp|directory>"
-	@exit 1
-endif
-	cargo run -- $(ESP) --format full --output results.json $(ARGS)
-
-# Run with assessor package output format
-run-assessor:
-ifndef ESP
-	@echo "Usage: make run-assessor ESP=<file.esp|directory>"
-	@exit 1
-endif
-	cargo run -- $(ESP) --format assessor --output assessor_package.json $(ARGS)
-
-# Run batch processing with full results
+# Run over a directory of policies; one envelope per run.
 run-batch:
 ifndef ESP
-	@echo "Usage: make run-batch ESP=<directory>"
+	@echo "Usage: make run-batch ESP=<directory> [OUT=path.json]"
 	@exit 1
 endif
-	cargo run -- $(ESP) --format full --output batch-output.json $(ARGS)
+	cargo run -- $(ESP) --output $(OUT) $(ARGS)
 
 # Run in release mode
 run-release:
@@ -317,15 +300,36 @@ format-check:
 # Security
 # =============================================================================
 
-security: audit deny
+# Full security gate: vulnerability scan + dependency policy + SBOM.
+# Implements NIST SP 800-218 SSDF tasks PW.4.4 (verify components),
+# PW.8.2 (automated vulnerability detection), PS.3.2 (component provenance).
+security: audit deny sbom
 
 audit:
-	cargo audit
+	@which cargo-audit > /dev/null && cargo audit || \
+		(echo "cargo-audit not found. Run: make install-tools" && exit 1)
 
 deny:
-	@echo "Note: cargo-deny requires Rust 1.92+"
 	@which cargo-deny > /dev/null && cargo deny check || \
-		echo "cargo-deny not found. Install with: cargo install cargo-deny"
+		(echo "cargo-deny not found. Run: make install-tools" && exit 1)
+
+# Generate a CycloneDX SBOM for the agent crate, stage it under
+# ../docs/sbom/, and canonicalize volatile fields (serialNumber, timestamp,
+# absolute checkout paths) so the artifact is reproducible across machines.
+# Implements NIST SP 800-218 SSDF PS.3.2 (provenance for components).
+SBOM_OUT_DIR := ../docs/sbom
+sbom:
+	@which cargo-cyclonedx > /dev/null || \
+		(echo "cargo-cyclonedx not found. Run: make install-tools" && exit 1)
+	@command -v python3 > /dev/null || \
+		(echo "python3 required for SBOM normalization" && exit 1)
+	@mkdir -p $(SBOM_OUT_DIR)
+	cargo cyclonedx --format json --spec-version 1.5 --quiet
+	@find . -maxdepth 2 -name '*.cdx.json' -not -path './target/*' \
+		-exec mv {} $(SBOM_OUT_DIR)/ \;
+	python3 ../scripts/normalize_sbom.py $(SBOM_OUT_DIR)/*.cdx.json
+	@echo "Generated (canonicalized) SBOMs:"
+	@ls -1 $(SBOM_OUT_DIR)/*.cdx.json
 
 # =============================================================================
 # Documentation
@@ -364,12 +368,38 @@ clean-all: clean
 # Pre-commit & CI
 # =============================================================================
 
+# Manual pre-commit gate — the same checks the installed git hook runs.
+# Install the hook with `make install-hooks` so this runs automatically.
 pre-commit: format-check lint test
 	@echo "✓ Pre-commit checks passed"
+
+# Auto-fix everything that can be auto-fixed, then run the full gate.
+# This is what to run locally before `git push` to mirror what CI will
+# enforce. Order matters: format first (changes lines), then sbom
+# (changes files), then lint + test against the canonicalized tree.
+ready: format sbom lint test
+	@echo ""
+	@echo "✓ Ready to commit. Review changes with: git status"
 
 # Full CI check including all cross-compilation targets
 ci: format-check lint-all check-all test security
 	@echo "✓ CI checks passed"
+
+# Install the repository's pre-commit hook into .git/hooks/.
+# Idempotent: re-running overwrites the existing hook. Any pre-existing
+# hook is backed up to .git/hooks/pre-commit.bak so it's recoverable.
+install-hooks:
+	@if [ ! -d ../.git ]; then \
+		echo "Not a git repository (../.git missing); nothing to install."; exit 1; \
+	fi
+	@if [ -f ../.git/hooks/pre-commit ] && [ ! -L ../.git/hooks/pre-commit ]; then \
+		mv ../.git/hooks/pre-commit ../.git/hooks/pre-commit.bak; \
+		echo "→ existing .git/hooks/pre-commit backed up to .bak"; \
+	fi
+	@cp ../scripts/git-pre-commit ../.git/hooks/pre-commit
+	@chmod +x ../.git/hooks/pre-commit
+	@echo "✓ Installed scripts/git-pre-commit → .git/hooks/pre-commit"
+	@echo "  Skip the hook for an individual commit with: git commit --no-verify"
 
 # =============================================================================
 # Tool Verification
@@ -404,9 +434,14 @@ bloat:
 install:
 	cargo install --path .
 
-# Install development tools
+# Install development tools.
+# Security/SBOM tooling supports NIST SP 800-218 SSDF compliance:
+#   cargo-audit       - PW.8.2 / RV.1.1 vulnerability scanning
+#   cargo-deny        - PS.3.2 / PW.4.4 license + source verification
+#   cargo-cyclonedx   - PS.3.2 SBOM generation (CycloneDX)
 install-tools:
-	cargo install cargo-audit cargo-outdated cargo-watch cargo-tree cargo-bloat
+	cargo install --locked cargo-audit cargo-deny cargo-cyclonedx \
+		cargo-outdated cargo-watch cargo-tree cargo-bloat
 
 # =============================================================================
 # Watch Mode (requires cargo-watch)

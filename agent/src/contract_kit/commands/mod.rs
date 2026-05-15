@@ -4,7 +4,7 @@
 
 // Cross-platform commands
 pub mod filesystem;
-pub mod tcp_listener;
+pub mod linux_tcp_listener;
 
 // Linux-only commands
 #[cfg(target_os = "linux")]
@@ -12,11 +12,11 @@ pub mod r9;
 
 // Cross-platform re-exports
 pub use filesystem::{
-    FileMetadata, FileSystemError, FileSystemResult, file_exists, get_file_metadata,
-    read_file_content,
+    file_exists, get_file_metadata, read_file_content, FileMetadata, FileSystemError,
+    FileSystemResult,
 };
-pub use tcp_listener::{
-    TcpListenerError, TcpListenerResult, check_port_listening, get_all_listening_ports,
+pub use linux_tcp_listener::{
+    check_port_listening, get_all_listening_ports, TcpListenerError, TcpListenerResult,
 };
 
 // Linux-only re-exports

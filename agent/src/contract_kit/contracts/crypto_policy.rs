@@ -94,7 +94,7 @@ pub fn create_crypto_policy_contract() -> CtnContract {
             allowed_operations: str_ops,
             description: "Raw output of update-crypto-policies --check".to_string(),
             example_values: vec![
-                "The configured policy matches the generated policy\nPASS".to_string(),
+                "The configured policy matches the generated policy\nPASS".to_string()
             ],
             validation_notes: None,
         });

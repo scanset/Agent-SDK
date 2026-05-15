@@ -3,7 +3,7 @@
 // Cross-platform collectors
 pub mod computed_values;
 pub mod filesystem;
-pub mod tcp_listener;
+pub mod linux_tcp_listener;
 
 // Linux-only collectors
 #[cfg(target_os = "linux")]
@@ -22,7 +22,7 @@ pub mod systemd_service;
 // Cross-platform re-exports
 pub use computed_values::ComputedValuesCollector;
 pub use filesystem::FileSystemCollector;
-pub use tcp_listener::TcpListenerCollector;
+pub use linux_tcp_listener::LinuxTcpListenerCollector;
 
 // Linux-only re-exports
 #[cfg(target_os = "linux")]

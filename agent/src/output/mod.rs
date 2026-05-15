@@ -1,98 +1,49 @@
-//! Output generation module
+//! Output generation module.
 //!
-//! Provides builders for different output formats:
-//! - Full results with evidence (signed)
-//! - Attestations (CUI-free, signed)
-//! - Summary (minimal, unsigned)
-//! - Assessor package (full reproducibility, signed)
-//! - Console (human-readable)
+//! v2.0.0 of the ESP engine collapsed the previous `full` / `attestation` /
+//! `summary` output formats into a single signed `AssessorPackage`
+//! envelope. There is now exactly one output shape — every scan produces
+//! an `AssessorPackage` (signed if a backend is available, unsigned with
+//! a warning otherwise) plus the human-readable console rendering.
 //!
 //! ## Hash Architecture
 //!
-//! All output formats use the pre-computed `replay_hash` from `ScanResult`. The hash
-//! is computed ONCE in `ExecutionEngine::execute()` via the `ReplayManifest` and
-//! passed through unchanged. This ensures hash consistency across all output formats.
-//!
-//! ```text
-//! ExecutionEngine::execute()
-//!     └── ReplayManifest { intent + contract + outcome per CTN }
-//!             └── replay_hash = SHA256(canonical manifest)
-//!                     └── ScanResult { replay_hash }
-//!                             ├── build_attestation()      → uses same hash
-//!                             ├── build_full_result()      → uses same hash
-//!                             └── build_assessor_package() → uses same hash
-//! ```
+//! The `replay_hash` is pre-computed in the execution engine and passed
+//! through unchanged via `ScanResult`. Output construction never recomputes
+//! the hash — it threads the engine's value into the envelope so the
+//! replay hash in the JSON is the same one the engine validated.
 //!
 //! ## Identity Status
 //!
-//! As of schema v1.2.0, all results include an `identity_status` field.
-//! The Agent SDK does not perform PKI bootstrap, so all results use
+//! The Agent SDK does not perform PKI bootstrap. All results carry
 //! `IdentityStatus::disabled` with the signing backend's ephemeral key ID
-//! as the signer identifier.
+//! as the signer identifier (or a hostname-derived fallback when no
+//! backend is available).
 
 mod assessor;
-mod attestation;
 mod console;
-mod full;
-mod summary;
 
 pub use assessor::build_assessor_package;
-pub use attestation::build_attestation;
 pub use console::{print_progress_result, print_results};
-pub use full::build_full_result;
-pub use summary::build_summary;
 
-use crate::config::OutputFormat;
-use crate::signing::{self, SigningBackend};
-use common::results::{IdentityStatus, generate_unsigned_signer_id};
 use crate::contract_kit::execution_api::ScanResult;
+use crate::signing::{self, SigningBackend};
+use common::results::{generate_unsigned_signer_id, IdentityStatus};
 
-/// Build output in the specified format
-///
-/// Results with envelopes (Full, Attestation, Assessor) are automatically signed.
-/// If signing fails, the result is returned unsigned with a warning logged.
-pub fn build_output(
-    scan_results: &[ScanResult],
-    format: OutputFormat,
-) -> Result<String, OutputError> {
-    // Create signing backend once (reused for identity status and signing)
+/// Build the single output envelope (signed AssessorPackage) and return it
+/// as pretty-printed JSON.
+pub fn build_output(scan_results: &[ScanResult]) -> Result<String, OutputError> {
     let backend = create_signing_backend();
-
-    // Derive identity status from the backend (Agent SDK has no PKI)
     let identity_status = build_identity_status(backend.as_deref());
 
-    let json = match format {
-        OutputFormat::Full => {
-            let mut result = build_full_result(scan_results, identity_status)?;
-            sign_if_available(&mut result.envelope, backend.as_deref());
-            serde_json::to_string_pretty(&result)
-                .map_err(|e| OutputError::Serialization(e.to_string()))?
-        }
-        OutputFormat::Attestation => {
-            let mut result = build_attestation(scan_results, identity_status)?;
-            sign_if_available(&mut result.envelope, backend.as_deref());
-            serde_json::to_string_pretty(&result)
-                .map_err(|e| OutputError::Serialization(e.to_string()))?
-        }
-        OutputFormat::Summary => {
-            // Summary format has no envelope — not signed, no identity status
-            let result = build_summary(scan_results);
-            serde_json::to_string_pretty(&result)
-                .map_err(|e| OutputError::Serialization(e.to_string()))?
-        }
-        OutputFormat::Assessor => {
-            let mut result = build_assessor_package(scan_results, identity_status)?;
-            sign_if_available(&mut result.envelope, backend.as_deref());
-            serde_json::to_string_pretty(&result)
-                .map_err(|e| OutputError::Serialization(e.to_string()))?
-        }
-    };
-    Ok(json)
+    let mut result = build_assessor_package(scan_results, identity_status)?;
+    sign_if_available(&mut result.envelope, backend.as_deref());
+    serde_json::to_string_pretty(&result).map_err(|e| OutputError::Serialization(e.to_string()))
 }
 
-/// Create the signing backend, logging any errors
-///
-/// Returns `None` if backend creation fails (graceful degradation).
+/// Create the signing backend, logging any errors. `None` here is a
+/// soft-failure mode — the envelope still serializes, just without a
+/// signature.
 fn create_signing_backend() -> Option<Box<dyn SigningBackend>> {
     match signing::create_backend() {
         Ok(backend) => Some(backend),
@@ -106,34 +57,28 @@ fn create_signing_backend() -> Option<Box<dyn SigningBackend>> {
     }
 }
 
-/// Build an `IdentityStatus` for the Agent SDK
-///
-/// The SDK does not perform PKI bootstrap, so identity is always `disabled`.
-/// The signer ID is derived from the signing backend's ephemeral key fingerprint
-/// when available, or a hostname-based fallback otherwise.
+/// Build an `IdentityStatus` for the SDK. Always `disabled` since the SDK
+/// does not perform PKI bootstrap; `signer_id` comes from the backend's
+/// ephemeral key fingerprint when available, or a hostname-based fallback
+/// when not.
 fn build_identity_status(backend: Option<&dyn SigningBackend>) -> IdentityStatus {
-    let signer_id = backend
-        .and_then(|b| b.signer_id().ok())
-        .unwrap_or_else(|| {
-            let hostname = std::env::var("HOSTNAME")
-                .or_else(|_| std::env::var("COMPUTERNAME"))
-                .unwrap_or_else(|_| "unknown".to_string());
-            generate_unsigned_signer_id(&hostname, "sdk")
-        });
+    let signer_id = backend.and_then(|b| b.signer_id().ok()).unwrap_or_else(|| {
+        let hostname = std::env::var("HOSTNAME")
+            .or_else(|_| std::env::var("COMPUTERNAME"))
+            .unwrap_or_else(|_| "unknown".to_string());
+        generate_unsigned_signer_id(&hostname, "sdk")
+    });
     IdentityStatus::disabled(signer_id)
 }
 
-/// Sign an envelope if a backend is available
-///
-/// Logs a warning if signing fails but does not return an error.
+/// Sign an envelope if a backend is available. Warnings are logged inside
+/// `try_sign_envelope`; failure here never aborts the run.
 fn sign_if_available(
     envelope: &mut common::results::ResultEnvelope,
     backend: Option<&dyn SigningBackend>,
 ) {
     if let Some(backend) = backend {
-        if !signing::try_sign_envelope(envelope, backend) {
-            // Warning already logged by try_sign_envelope
-        }
+        let _ = signing::try_sign_envelope(envelope, backend);
     }
 }
 
@@ -141,15 +86,9 @@ fn sign_if_available(
 // Hash Helpers
 // ============================================================================
 
-/// Combine replay hashes from multiple scan results
-///
-/// For a single scan result, returns the replay hash directly.
-/// For multiple scan results, combines them deterministically by
-/// sorting and hashing the concatenation.
-///
-/// ## Returns
-///
-/// A single `replay_hash` string to pass to result builders.
+/// Combine replay hashes from multiple scan results. For a single result,
+/// returns the hash directly. For multiple, sorts and hashes the
+/// concatenation so the rollup is deterministic across scan ordering.
 pub(crate) fn combine_replay_hashes(scan_results: &[ScanResult]) -> Result<String, OutputError> {
     if scan_results.is_empty() {
         return Err(OutputError::Build(
@@ -157,7 +96,6 @@ pub(crate) fn combine_replay_hashes(scan_results: &[ScanResult]) -> Result<Strin
         ));
     }
 
-    // Single result: use hash directly
     if scan_results.len() == 1 {
         let result = scan_results
             .first()
@@ -165,11 +103,9 @@ pub(crate) fn combine_replay_hashes(scan_results: &[ScanResult]) -> Result<Strin
         return Ok(result.replay_hash.clone());
     }
 
-    // Multiple results: combine hashes deterministically
     combine_hashes_sorted(scan_results.iter().map(|r| &r.replay_hash))
 }
 
-/// Combine multiple hashes into one (sorted for determinism)
 fn combine_hashes_sorted<'a, I>(hashes: I) -> Result<String, OutputError>
 where
     I: Iterator<Item = &'a String>,
@@ -179,7 +115,6 @@ where
     let mut sorted: Vec<&String> = hashes.collect();
     sorted.sort();
 
-    // Concatenate all hashes with separator
     let mut combined = Vec::new();
     for hash in sorted {
         combined.extend_from_slice(hash.as_bytes());
@@ -201,12 +136,9 @@ where
 // Errors
 // ============================================================================
 
-/// Errors that can occur during output generation
 #[derive(Debug)]
 pub enum OutputError {
-    /// Failed to build result
     Build(String),
-    /// Failed to serialize result
     Serialization(String),
 }
 

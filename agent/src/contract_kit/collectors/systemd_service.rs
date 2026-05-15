@@ -87,18 +87,16 @@ impl CtnDataCollector for SystemdServiceCollector {
             .build();
         data.set_method(method);
 
-        let args = vec![
+        let args = [
             "show",
             unit_name.as_str(),
             "--property=ActiveState,SubState,UnitFileState,LoadState",
             "--no-pager",
         ];
 
-        let args_str: Vec<&str> = args.iter().copied().collect();
-
         let output = self
             .executor
-            .execute("systemctl", &args_str, Some(Duration::from_secs(10)))
+            .execute("systemctl", &args, Some(Duration::from_secs(10)))
             .map_err(|e| CollectionError::CollectionFailed {
                 object_id: object.identifier.clone(),
                 reason: format!("Failed to execute systemctl: {}", e),

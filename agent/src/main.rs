@@ -5,35 +5,24 @@
 //! ## Usage
 //!
 //! ```bash
-//! # Scan a single file
+//! # Scan a single file (console output)
 //! esp_agent policy.esp
 //!
-//! # Scan a directory
+//! # Scan a directory (console output)
 //! esp_agent /path/to/policies/
 //!
-//! # Specify output format
-//! esp_agent --format attestation -o attestation.json policy.esp
+//! # Save the signed AssessorPackage envelope to a file
+//! esp_agent --output assessor_package.json policy.esp
 //! ```
 //!
-//! ## Output Formats
-//!
-//! - **full** (default): Complete results with findings and evidence
-//! - **summary**: Minimal output with pass/fail counts only
-//! - **attestation**: CUI-free format safe for network transport
-//!
-//! All formats produce a single envelope containing all scanned policies.
+//! Every scan produces one signed `AssessorPackage` envelope covering all
+//! policies the run touched. See `output/` for the envelope construction
+//! and `signing/` for how the per-deployment signer key is derived.
 
-mod cli;
-mod config;
-mod contract_kit;
-mod discovery;
-mod output;
-mod registry;
-mod scanner;
-mod signing;
-
-use cli::{parse_args, print_help, CliResult};
-use crate::contract_kit::execution_api::logging;
+use agent::cli::{parse_args, print_help, CliResult};
+use agent::config;
+use agent::contract_kit::execution_api::logging;
+use agent::{discovery, scanner};
 
 fn main() {
     // Initialize logging

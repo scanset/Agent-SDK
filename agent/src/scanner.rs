@@ -147,8 +147,7 @@ fn save_output(scan_results: &[ScanResult], config: &ScanConfig) -> Result<(), S
         None => return Ok(()), // No output file specified, nothing to do
     };
 
-    let json =
-        output::build_output(scan_results, config.output_format).map_err(ScanError::Output)?;
+    let json = output::build_output(scan_results).map_err(ScanError::Output)?;
 
     std::fs::write(output_path, &json)
         .map_err(|e| ScanError::WriteFile(output_path.display().to_string(), e))?;
@@ -161,11 +160,7 @@ fn print_execution_info(duration: std::time::Duration, config: &ScanConfig) {
     println!("────────────────────────────────────────────────────────────────────────────────");
     println!("  Duration:     {:.2}s", duration.as_secs_f64());
     if let Some(output_path) = &config.output_file {
-        println!(
-            "  Output:       {} ({})",
-            output_path.display(),
-            config.output_format
-        );
+        println!("  Output:       {}", output_path.display());
     }
     println!("────────────────────────────────────────────────────────────────────────────────");
     println!();

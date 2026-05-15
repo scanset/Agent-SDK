@@ -35,11 +35,11 @@ pub fn create_scanner_registry() -> Result<CtnStrategyRegistry, StrategyError> {
         Box::new(executors::JsonRecordExecutor::new(json_contract)),
     )?;
 
-    // Register TCP listener strategy
+    // Register linux_tcp_listener strategy (scanner-local /proc/net/tcp probe).
     registry.register_ctn_strategy(
-        Box::new(collectors::TcpListenerCollector::new()),
-        Box::new(executors::TcpListenerExecutor::new(
-            contracts::create_tcp_listener_contract(),
+        Box::new(collectors::LinuxTcpListenerCollector::new()),
+        Box::new(executors::LinuxTcpListenerExecutor::new(
+            contracts::create_linux_tcp_listener_contract(),
         )),
     )?;
 

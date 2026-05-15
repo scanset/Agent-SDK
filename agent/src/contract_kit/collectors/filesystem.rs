@@ -22,7 +22,7 @@ use execution_engine::types::execution_context::{ExecutableObject, ExecutableObj
 use std::path::Path;
 
 use crate::contract_kit::commands::filesystem::{
-    FileSystemError, get_file_metadata, read_file_content,
+    get_file_metadata, read_file_content, FileSystemError,
 };
 
 /// Collector for file system data

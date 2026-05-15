@@ -1,4 +1,4 @@
-# tcp_listener
+# linux_tcp_listener
 
 ## Overview
 
@@ -49,7 +49,7 @@ Validates whether a TCP port is listening on the local system by reading `/proc/
 
 | Property                     | Value           |
 | ---------------------------- | --------------- |
-| Collector Type               | `tcp_listener`  |
+| Collector Type               | `linux_tcp_listener` |
 | Collection Mode              | Metadata        |
 | Required Capabilities        | `procfs_access` |
 | Expected Collection Time     | ~10ms           |
@@ -91,7 +91,7 @@ STATE is_listening
     listening boolean = true
 STATE_END
 
-CTN tcp_listener
+CTN linux_tcp_listener
     TEST at_least_one all
     STATE_REF is_listening
     OBJECT_REF ssh_port
@@ -109,7 +109,7 @@ STATE not_listening
     listening boolean = false
 STATE_END
 
-CTN tcp_listener
+CTN linux_tcp_listener
     TEST at_least_one all
     STATE_REF not_listening
     OBJECT_REF dangerous_port
@@ -128,7 +128,7 @@ STATE bound_to_localhost
     listening boolean = true
 STATE_END
 
-CTN tcp_listener
+CTN linux_tcp_listener
     TEST at_least_one all
     STATE_REF bound_to_localhost
     OBJECT_REF localhost_only
@@ -150,7 +150,7 @@ STATE must_listen
     listening boolean = true
 STATE_END
 
-CTN tcp_listener
+CTN linux_tcp_listener
     TEST all all
     STATE_REF must_listen
     OBJECT_REF kubelet_port

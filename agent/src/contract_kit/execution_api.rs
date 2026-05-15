@@ -6,7 +6,7 @@
 //! - **File-based** (`scan_file`, `scan_file_with_logging`): compiles a local `.esp`
 //!   file through all four phases — compile → convert → resolve → execute.
 //! - **AST-based** (`scan_ast`, `scan_ast_manifest`): skips compilation for
-//!   pre-compiled ASTs (e.g. received over a remote channel).
+//!   pre-compiled ASTs supplied by the caller.
 //!
 //! ## Example
 //!

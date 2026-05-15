@@ -44,26 +44,26 @@ use std::ffi::OsStr;
 use std::os::windows::ffi::OsStrExt;
 
 #[cfg(windows)]
+use windows::core::{PCWSTR, PWSTR};
+#[cfg(windows)]
 use windows::Win32::Foundation::{
-    CloseHandle, GetLastError, HANDLE, HLOCAL, LocalFree, WIN32_ERROR,
+    CloseHandle, GetLastError, LocalFree, HANDLE, HLOCAL, WIN32_ERROR,
 };
 #[cfg(windows)]
 use windows::Win32::Security::Authorization::{GetSecurityInfo, SE_FILE_OBJECT};
 #[cfg(windows)]
 use windows::Win32::Security::{
-    GROUP_SECURITY_INFORMATION, LookupAccountSidW, OWNER_SECURITY_INFORMATION,
+    LookupAccountSidW, GROUP_SECURITY_INFORMATION, OWNER_SECURITY_INFORMATION,
     PSECURITY_DESCRIPTOR, PSID, SID_NAME_USE,
 };
 #[cfg(windows)]
 use windows::Win32::Storage::FileSystem::{
-    CreateFileW, FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_HIDDEN, FILE_ATTRIBUTE_READONLY,
-    FILE_ATTRIBUTE_SYSTEM, FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAGS_AND_ATTRIBUTES,
-    FILE_GENERIC_READ, FILE_GENERIC_WRITE, FILE_SHARE_READ, FILE_SHARE_WRITE,
-    GET_FILEEX_INFO_LEVELS, GetFileAttributesExW, GetFileAttributesW, INVALID_FILE_ATTRIBUTES,
+    CreateFileW, GetFileAttributesExW, GetFileAttributesW, FILE_ATTRIBUTE_DIRECTORY,
+    FILE_ATTRIBUTE_HIDDEN, FILE_ATTRIBUTE_READONLY, FILE_ATTRIBUTE_SYSTEM,
+    FILE_FLAGS_AND_ATTRIBUTES, FILE_FLAG_BACKUP_SEMANTICS, FILE_GENERIC_READ, FILE_GENERIC_WRITE,
+    FILE_SHARE_READ, FILE_SHARE_WRITE, GET_FILEEX_INFO_LEVELS, INVALID_FILE_ATTRIBUTES,
     OPEN_EXISTING, WIN32_FILE_ATTRIBUTE_DATA,
 };
-#[cfg(windows)]
-use windows::core::{PCWSTR, PWSTR};
 
 /// File metadata collected from platform-native APIs
 #[derive(Debug, Clone, Default)]

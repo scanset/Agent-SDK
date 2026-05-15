@@ -105,7 +105,7 @@ impl CtnDataCollector for RpmPackageCollector {
                 let version_release = if let Some(dot_pos) = rest.rfind('.') {
                     &rest[..dot_pos]
                 } else {
-                    &rest[..]
+                    rest
                 };
                 data.add_field(
                     "version".to_string(),

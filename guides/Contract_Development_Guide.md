@@ -4,6 +4,8 @@ A complete guide for implementing custom compliance scanners using the ESP frame
 
 ---
 
+
+<!-- SECTION: table-of-contents -->
 ## Table of Contents
 
 1. [Overview](#overview)
@@ -21,6 +23,8 @@ A complete guide for implementing custom compliance scanners using the ESP frame
 
 ---
 
+
+<!-- SECTION: overview -->
 ## Overview
 
 The ESP framework provides the infrastructure for building compliance scanners. The framework handles:
@@ -35,6 +39,8 @@ The ESP framework provides the infrastructure for building compliance scanners. 
 - **Collectors** — Gather data from the system
 - **Executors** — Validate collected data against ESP states
 
+
+<!-- SECTION: threat-model-for-scanner-authors -->
 ### Threat Model for Scanner Authors
 
 ESP protects against several classes of threats. Understanding these helps you write secure scanners:
@@ -43,27 +49,44 @@ ESP protects against several classes of threats. Understanding these helps you w
 |--------|----------------|---------------------|
 | Resource exhaustion | Timeout enforcement, batch limits | Set appropriate timeouts on all I/O |
 | Shell injection | No shell execution, whitelist-only commands | Use `SystemCommandExecutor`, never spawn shells |
-| Sensitive evidence leakage | Attestation mode strips CUI | Avoid over-collection, respect contract scope |
+| Sensitive evidence leakage | Consumer-side classification of the envelope | Avoid over-collection, respect contract scope; treat any sensitive fields you add to `CollectedData` as such downstream |
 | Non-deterministic results | Contract validation, typed values | Return consistent typed values |
 | Privilege escalation | Capability declarations | Declare `requires_elevated_privileges` accurately |
 | Environment variable leakage | Sandboxed execution | Explicitly declare required env vars |
 
-### Result Modes and Scanner Design
 
-ESP supports two result modes that affect how you design collectors:
+<!-- SECTION: scanner-design-and-sensitive-fields -->
+### Scanner Design and Sensitive Fields
 
-- **Attestation mode** (default): Only policy outcomes are transmitted. Collected evidence stays local. Design collectors to gather what's needed for validation without storing sensitive data in results.
+Every scan produces a single signed `AssessorPackage` envelope carrying
+the engine's `replay_hash`, the policy outcomes, and any evidence
+fields your collectors emit. Classification of the envelope's contents
+is the consumer's responsibility — the engine does not strip or partition
+fields by sensitivity.
 
-- **Full results mode**: Expected/actual values included for audit. If your scanner collects sensitive fields (passwords, keys, PII), document this clearly and consider filtering before adding to `CollectedData`.
+When designing collectors:
+
+- Collect only the fields your contract validates against. If a state
+  comparison doesn't need the raw value, don't add it to `CollectedData`.
+- If your scanner collects fields that may contain secrets, PII, or
+  regulated data (passwords, keys, account identifiers), document that
+  in the CTN spec doc so downstream tooling knows to treat the envelope
+  accordingly.
+- Prefer derived booleans / counts over raw blobs when the policy logic
+  allows it (e.g. `present: true` rather than the full matched line).
 
 ---
 
+
+<!-- SECTION: what-is-a-ctn -->
 ## What is a CTN?
 
 A **CTN (Criterion Type Node)** is the fundamental unit of compliance checking in ESP. Each CTN type represents a specific kind of resource you want to validate — files, packages, services, kernel parameters, etc. When you write `CTN file_metadata` in an ESP policy, you're invoking a registered CTN type that knows how to collect and validate file metadata. Creating a new scanner means defining a new CTN type with its contract (what fields it accepts), collector (how to gather data), and executor (how to validate against expected states).
 
 ---
 
+
+<!-- SECTION: quick-start-hello-ctn -->
 ## Quick Start: Hello CTN
 
 Here's a minimal working example — a scanner that checks if a file exists:
@@ -283,8 +306,12 @@ let result = scan_file("policy.esp", Arc::new(registry))?;
 
 ---
 
+
+<!-- SECTION: architecture -->
 ## Architecture
 
+
+<!-- SECTION: component-hierarchy -->
 ### Component Hierarchy
 
 ```
@@ -317,6 +344,8 @@ let result = scan_file("policy.esp", Arc::new(registry))?;
 └──────────────────────┘      └──────────────────────┘
 ```
 
+
+<!-- SECTION: three-component-pattern -->
 ### Three-Component Pattern
 
 Every CTN type requires exactly three components:
@@ -327,6 +356,8 @@ Every CTN type requires exactly three components:
 | **Collector** | `collectors/` | Data gathering |
 | **Executor** | `executors/` | Validation logic |
 
+
+<!-- SECTION: collector-vs-executor-responsibilities -->
 ### Collector vs Executor Responsibilities
 
 | Concern | Collector | Executor |
@@ -345,6 +376,8 @@ Every CTN type requires exactly three components:
 - Executors must not perform additional collection
 - The contract defines what is allowed — enforce this boundary
 
+
+<!-- SECTION: naming-conventions -->
 ### Naming Conventions
 
 Follow these conventions for ecosystem consistency:
@@ -359,8 +392,12 @@ Follow these conventions for ecosystem consistency:
 
 ---
 
+
+<!-- SECTION: getting-started -->
 ## Getting Started
 
+
+<!-- SECTION: project-structure -->
 ### Project Structure
 
 ```
@@ -384,6 +421,8 @@ your_scanner/
         └── platform_config.rs
 ```
 
+
+<!-- SECTION: dependencies -->
 ### Dependencies
 
 ```toml
@@ -406,10 +445,14 @@ serde_json = "1.0"
 
 ---
 
+
+<!-- SECTION: creating-a-ctn-contract -->
 ## Creating a CTN Contract
 
 A contract defines the interface for your scanner: required fields, supported operations, and behaviors.
 
+
+<!-- SECTION: contract-template -->
 ### Contract Template
 
 ```rust
@@ -442,6 +485,8 @@ pub fn create_your_ctn_contract() -> CtnContract {
 }
 ```
 
+
+<!-- SECTION: object-requirements -->
 ### Object Requirements
 
 Define fields required in OBJECT blocks:
@@ -468,6 +513,8 @@ fn add_object_requirements(contract: &mut CtnContract) {
 }
 ```
 
+
+<!-- SECTION: state-requirements -->
 ### State Requirements
 
 Define fields that can be validated in STATE blocks:
@@ -517,6 +564,8 @@ fn add_state_requirements(contract: &mut CtnContract) {
 }
 ```
 
+
+<!-- SECTION: field-mappings -->
 ### Field Mappings
 
 Map ESP names to internal data names:
@@ -541,6 +590,8 @@ fn configure_field_mappings(contract: &mut CtnContract) {
 }
 ```
 
+
+<!-- SECTION: behaviors -->
 ### Behaviors
 
 Define optional behaviors that modify collection:
@@ -573,6 +624,8 @@ fn add_behaviors(contract: &mut CtnContract) {
 }
 ```
 
+
+<!-- SECTION: collection-strategy -->
 ### Collection Strategy
 
 Specify how data should be collected:
@@ -609,10 +662,14 @@ fn set_collection_strategy(contract: &mut CtnContract) {
 
 ---
 
+
+<!-- SECTION: implementing-a-collector -->
 ## Implementing a Collector
 
 A collector gathers data from the system.
 
+
+<!-- SECTION: collector-template -->
 ### Collector Template
 
 ```rust
@@ -731,6 +788,8 @@ impl CtnDataCollector for YourCollector {
 }
 ```
 
+
+<!-- SECTION: collection-method-traceability -->
 ### Collection Method Traceability
 
 ESP supports assessor-grade evidence traceability through `CollectionMethod`. Every collector should document how evidence was gathered:
@@ -819,6 +878,8 @@ impl CtnDataCollector for ComputedValuesCollector {
 }
 ```
 
+
+<!-- SECTION: error-types-and-semantics -->
 ### Error Types and Semantics
 
 Choose the correct error type — it affects TEST evaluation:
@@ -854,10 +915,14 @@ Err(CollectionError::UnsupportedCtnType { ctn_type, collector_id })
 
 ---
 
+
+<!-- SECTION: implementing-an-executor -->
 ## Implementing an Executor
 
 An executor validates collected data against STATE requirements.
 
+
+<!-- SECTION: executor-template -->
 ### Executor Template
 
 ```rust
@@ -1022,6 +1087,8 @@ impl CtnExecutor for YourExecutor {
 }
 ```
 
+
+<!-- SECTION: string-operations -->
 ### String Operations
 
 Always use `string::compare()` for string operations:
@@ -1049,6 +1116,8 @@ let passed = string::compare(actual, expected, operation).unwrap_or(false);
 | `Operation::PatternMatch` | Regex pattern matching |
 | `Operation::Matches` | Regex (alias for PatternMatch) |
 
+
+<!-- SECTION: version-comparisons -->
 ### Version Comparisons
 
 For semantic version comparisons:
@@ -1060,6 +1129,8 @@ use execution_engine::execution::comparisons::version;
 let passed = version::compare(actual, expected, operation).unwrap_or(false);
 ```
 
+
+<!-- SECTION: evr-string-comparisons -->
 ### EVR String Comparisons
 
 For RPM-style epoch:version-release comparisons:
@@ -1073,8 +1144,12 @@ let passed = evr::compare(actual, expected, operation).unwrap_or(false);
 
 ---
 
+
+<!-- SECTION: registering-your-scanner -->
 ## Registering Your Scanner
 
+
+<!-- SECTION: using-contractkit-recommended -->
 ### Using contract_kit (Recommended)
 
 ```rust
@@ -1093,6 +1168,8 @@ pub fn create_registry() -> Result<CtnStrategyRegistry, StrategyError> {
 }
 ```
 
+
+<!-- SECTION: scanning -->
 ### Scanning
 
 ```rust
@@ -1115,10 +1192,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ---
 
+
+<!-- SECTION: command-execution -->
 ## Command Execution
 
 Command-based collectors require careful handling of execution environment, output parsing, and type conversion.
 
+
+<!-- SECTION: the-command-sandbox -->
 ### The Command Sandbox
 
 Commands run in an **isolated sandbox** with these constraints:
@@ -1133,6 +1214,8 @@ Commands run in an **isolated sandbox** with these constraints:
 
 **Critical**: If your command needs environment variables, you must **explicitly provide them**.
 
+
+<!-- SECTION: systemcommandexecutor -->
 ### SystemCommandExecutor
 
 ```rust
@@ -1162,6 +1245,8 @@ if output.exit_code == 0 {
 }
 ```
 
+
+<!-- SECTION: modular-command-executor-configuration -->
 ### Modular Command Executor Configuration
 
 For platform-specific or domain-specific commands, create dedicated configuration functions:
@@ -1216,6 +1301,8 @@ pub fn create_rpm_executor() -> SystemCommandExecutor {
 }
 ```
 
+
+<!-- SECTION: environment-variables -->
 ### Environment Variables
 
 Commands do **NOT** inherit environment variables. You must explicitly set any required variables:
@@ -1252,6 +1339,8 @@ if std::path::Path::new(&kubeconfig_path).exists() {
 }
 ```
 
+
+<!-- SECTION: understanding-command-output -->
 ### Understanding Command Output
 
 Before implementing a collector, you must understand the **exact output format** of the command you're using. Document this in your CTN type reference.
@@ -1356,6 +1445,8 @@ let count = items.len();
 let found = !items.is_empty();
 ```
 
+
+<!-- SECTION: type-conversion-rules -->
 ### Type Conversion Rules
 
 The executor expects specific types. Document what type your collector returns:
@@ -1383,6 +1474,8 @@ data.add_field("enabled".to_string(),
     ResolvedValue::Boolean(is_enabled));
 ```
 
+
+<!-- SECTION: safe-output-parsing -->
 ### Safe Output Parsing
 
 **Always use `.get()` instead of direct indexing:**
@@ -1400,6 +1493,8 @@ let port = parts.get(1).ok_or_else(|| CollectionError::CollectionFailed {
 })?;
 ```
 
+
+<!-- SECTION: documenting-command-output -->
 ### Documenting Command Output
 
 Every CTN type that uses commands should document:
@@ -1410,12 +1505,16 @@ Every CTN type that uses commands should document:
 4. **Type conversions** - What type each field becomes
 5. **Error conditions** - What output indicates errors
 
-See `contract_kit/docs/` for CTN type reference documentation examples.
+See `../contracts/` for CTN type reference documentation examples.
 
 ---
 
+
+<!-- SECTION: advanced-features -->
 ## Advanced Features
 
+
+<!-- SECTION: batch-collection -->
 ### Batch Collection
 
 Optimize by collecting multiple objects in one operation:
@@ -1451,6 +1550,8 @@ impl CtnDataCollector for YourCollector {
 }
 ```
 
+
+<!-- SECTION: record-validation -->
 ### Record Validation
 
 For structured JSON/record data validation:
@@ -1501,6 +1602,8 @@ for state in &criterion.states {
 - Array wildcard: `users.*.role` (check all elements)
 - Entity checks: `all`, `at_least_one`, `none`, `only_one`
 
+
+<!-- SECTION: filter-support -->
 ### Filter Support
 
 Filters are evaluated by the execution engine before collection. Your collector receives only filtered objects:
@@ -1521,6 +1624,8 @@ Filters are evaluated by the execution engine before collection. Your collector 
 // Your collector receives only objects that passed the filter
 ```
 
+
+<!-- SECTION: set-operations -->
 ### SET Operations
 
 SET operations are expanded by the resolution engine. Your collector sees individual objects:
@@ -1545,8 +1650,12 @@ SET operations are expanded by the resolution engine. Your collector sees indivi
 
 ---
 
+
+<!-- SECTION: testing -->
 ## Testing
 
+
+<!-- SECTION: unit-tests -->
 ### Unit Tests
 
 ```rust
@@ -1579,6 +1688,8 @@ mod tests {
 }
 ```
 
+
+<!-- SECTION: integration-test -->
 ### Integration Test
 
 ```rust
@@ -1594,8 +1705,12 @@ fn test_full_scan() -> Result<(), Box<dyn std::error::Error>> {
 
 ---
 
+
+<!-- SECTION: troubleshooting -->
 ## Troubleshooting
 
+
+<!-- SECTION: common-issues -->
 ### Common Issues
 
 **ObjectNotFound vs AccessDenied confusion**
@@ -1697,6 +1812,8 @@ match string::compare(actual, expected, Operation::PatternMatch) {
 }
 ```
 
+
+<!-- SECTION: debug-logging -->
 ### Debug Logging
 
 Enable debug logging to trace execution:
@@ -1723,8 +1840,12 @@ fn collect_for_ctn_with_hints(...) -> Result<CollectedData, CollectionError> {
 
 ---
 
+
+<!-- SECTION: best-practices -->
 ## Best Practices
 
+
+<!-- SECTION: contract-design -->
 ### Contract Design
 
 ✅ **Do:**
@@ -1739,6 +1860,8 @@ fn collect_for_ctn_with_hints(...) -> Result<CollectedData, CollectionError> {
 - Expose internal names in ESP-facing fields
 - Create contracts with no state fields
 
+
+<!-- SECTION: collector-implementation -->
 ### Collector Implementation
 
 ✅ **Do:**
@@ -1759,6 +1882,8 @@ fn collect_for_ctn_with_hints(...) -> Result<CollectedData, CollectionError> {
 - Use direct indexing (`parts[0]`) on parsed output
 - Assume environment variables are inherited
 
+
+<!-- SECTION: executor-implementation -->
 ### Executor Implementation
 
 ✅ **Do:**
@@ -1774,6 +1899,8 @@ fn collect_for_ctn_with_hints(...) -> Result<CollectedData, CollectionError> {
 - Return generic error messages
 - Perform data collection (that's the collector's job)
 
+
+<!-- SECTION: security -->
 ### Security
 
 ✅ **Do:**
@@ -1790,6 +1917,8 @@ fn collect_for_ctn_with_hints(...) -> Result<CollectedData, CollectionError> {
 - Collect more data than needed for validation
 - Pass sensitive env vars unnecessarily
 
+
+<!-- SECTION: ctn-type-documentation -->
 ### CTN Type Documentation
 
 ✅ **Do:**
@@ -1801,8 +1930,12 @@ fn collect_for_ctn_with_hints(...) -> Result<CollectedData, CollectionError> {
 
 ---
 
+
+<!-- SECTION: checklist -->
 ## Checklist
 
+
+<!-- SECTION: contract -->
 ### Contract
 - [ ] CTN type name is unique and uses `snake_case`
 - [ ] Required/optional object fields defined with clear descriptions
@@ -1811,6 +1944,8 @@ fn collect_for_ctn_with_hints(...) -> Result<CollectedData, CollectionError> {
 - [ ] Behaviors documented with examples
 - [ ] Collection strategy includes accurate performance hints
 
+
+<!-- SECTION: collector -->
 ### Collector
 - [ ] Implements `CtnDataCollector` trait
 - [ ] Validates behavior hints against contract
@@ -1823,6 +1958,8 @@ fn collect_for_ctn_with_hints(...) -> Result<CollectedData, CollectionError> {
 - [ ] Explicitly handles required environment variables
 - [ ] **Documents collection method via `set_method()`**
 
+
+<!-- SECTION: executor -->
 ### Executor
 - [ ] Implements `CtnExecutor` trait
 - [ ] Uses `string::compare()` for string operations
@@ -1831,11 +1968,15 @@ fn collect_for_ctn_with_hints(...) -> Result<CollectedData, CollectionError> {
 - [ ] Does not perform additional collection
 - [ ] Includes collected_data in results
 
+
+<!-- SECTION: integration -->
 ### Integration
 - [ ] Registered in registry with matching collector/executor
 - [ ] End-to-end test passing
 - [ ] Example ESP file provided
 
+
+<!-- SECTION: documentation -->
 ### Documentation
 - [ ] CTN type reference document created
 - [ ] Command output format documented
@@ -1844,23 +1985,44 @@ fn collect_for_ctn_with_hints(...) -> Result<CollectedData, CollectionError> {
 
 ---
 
+
+<!-- SECTION: reference-implementations -->
 ## Reference Implementations
 
-See `contract_kit/src/` for complete examples:
+The Agent SDK bundles a baseline RHEL 9 / Rocky 9 CTN registry at
+`agent/src/contract_kit/`. Paths shown are relative to `agent/src/contract_kit/`.
+Some CTN types share a Rust module — `file_metadata` and `file_content` are
+both backed by `filesystem.rs`; `json_record` shares `file_contracts.rs` /
+`json_contracts.rs` patterns.
 
 | Type | Contract | Collector | Executor |
 |------|----------|-----------|----------|
-| `file_metadata` | `contracts/file_metadata.rs` | `collectors/file_metadata.rs` | `executors/file_metadata.rs` |
-| `file_content` | `contracts/file_content.rs` | `collectors/file_content.rs` | `executors/file_content.rs` |
-| `json_record` | `contracts/json_record.rs` | `collectors/json_record.rs` | `executors/json_record.rs` |
-| `tcp_listener` | `contracts/tcp_listener.rs` | `collectors/tcp_listener.rs` | `executors/tcp_listener.rs` |
-| `k8s_resource` | `contracts/k8s_resource.rs` | `collectors/k8s_resource.rs` | `executors/k8s_resource.rs` |
+| `file_metadata` | `contracts/file_contracts.rs` | `collectors/filesystem.rs` | `executors/file_metadata.rs` |
+| `file_content` | `contracts/file_contracts.rs` | `collectors/filesystem.rs` | `executors/file_content.rs` |
+| `json_record` | `contracts/json_contracts.rs` | `collectors/filesystem.rs` | `executors/json_record.rs` |
+| `linux_tcp_listener` | `contracts/linux_tcp_listener.rs` | `collectors/linux_tcp_listener.rs` | `executors/linux_tcp_listener.rs` |
+| `os_release` | `contracts/os_release.rs` | `collectors/os_release.rs` | `executors/os_release.rs` |
+| `rpm_package` | `contracts/rpm_package.rs` | `collectors/rpm_package.rs` | `executors/rpm_package.rs` |
+| `systemd_service` | `contracts/systemd_service_contracts.rs` | `collectors/systemd_service.rs` | `executors/systemd_service.rs` |
+| `sysctl_parameter` | `contracts/sysctl_parameter_contracts.rs` | `collectors/sysctl_parameter.rs` | `executors/sysctl_parameter.rs` |
+| `fips_mode` | `contracts/fips_mode.rs` | `collectors/fips_crypto.rs` | `executors/fips_mode.rs` |
+| `crypto_policy` | `contracts/crypto_policy.rs` | `collectors/fips_crypto.rs` | `executors/crypto_policy.rs` |
+| `grub_config` | `contracts/grub_config.rs` | `collectors/grub_config.rs` | `executors/grub_config.rs` |
 | `computed_values` | `contracts/computed_values.rs` | `collectors/computed_values.rs` | `executors/computed_values.rs` |
 
-See `contract_kit/docs/` for CTN type reference documentation.
+For cloud, container, and identity-platform CTNs (AWS, Azure, M365,
+Kubernetes, PostgreSQL, network probes, Windows), see the companion
+[Contract-Library](https://github.com/scanset/Contract-Library) gallery —
+each contract there ships as a `contract / collector / executor / command`
+quartet plus a `.md` spec, copy-paste-ready.
+
+See [`../contracts/`](../contracts/) for the CTN type spec documents that
+accompany the implementations above.
 
 ---
 
+
+<!-- SECTION: summary -->
 ## Summary
 
 To create a new CTN type:

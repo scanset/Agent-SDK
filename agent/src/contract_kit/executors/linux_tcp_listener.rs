@@ -1,4 +1,4 @@
-//! TCP Listener Executor
+//! `linux_tcp_listener` Executor
 //!
 //! Validates TCP listener state against expected values.
 
@@ -15,11 +15,11 @@ use execution_engine::types::execution_context::ExecutableCriterion;
 use std::collections::HashMap;
 
 /// Executor for tcp_listener validation
-pub struct TcpListenerExecutor {
+pub struct LinuxTcpListenerExecutor {
     contract: CtnContract,
 }
 
-impl TcpListenerExecutor {
+impl LinuxTcpListenerExecutor {
     pub fn new(contract: CtnContract) -> Self {
         Self { contract }
     }
@@ -43,7 +43,7 @@ impl TcpListenerExecutor {
     }
 }
 
-impl CtnExecutor for TcpListenerExecutor {
+impl CtnExecutor for LinuxTcpListenerExecutor {
     fn execute_with_contract(
         &self,
         criterion: &ExecutableCriterion,
@@ -196,7 +196,7 @@ impl CtnExecutor for TcpListenerExecutor {
     }
 
     fn ctn_type(&self) -> &str {
-        "tcp_listener"
+        "linux_tcp_listener"
     }
 
     fn validate_collected_data(
