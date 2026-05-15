@@ -25,9 +25,9 @@ vendored-openssl = ["openssl/vendored"]
 # PackageInfo (classification is the consumer's responsibility now, not
 # the envelope's).
 # ============================================================================
-common = { git = "https://github.com/CurtisSlone/Endpoint-State-Policy", tag = "v2.2.3" }
-compiler = { git = "https://github.com/CurtisSlone/Endpoint-State-Policy", tag = "v2.2.3" }
-execution_engine = { git = "https://github.com/CurtisSlone/Endpoint-State-Policy", tag = "v2.2.3" }
+common = { version = "2.2.3", git = "https://github.com/CurtisSlone/Endpoint-State-Policy", tag = "v2.2.3" }
+compiler = { version = "2.2.3", git = "https://github.com/CurtisSlone/Endpoint-State-Policy", tag = "v2.2.3" }
+execution_engine = { version = "2.2.3", git = "https://github.com/CurtisSlone/Endpoint-State-Policy", tag = "v2.2.3" }
 
 # ============================================================================
 # Serialization
