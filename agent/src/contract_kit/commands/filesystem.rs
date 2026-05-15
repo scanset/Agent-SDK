@@ -553,8 +553,8 @@ mod tests {
         // working directory mid-test. Suffix with the caller-supplied test
         // name so every test gets its own scratch space.
         fn create_test_dir(test_name: &str) -> std::path::PathBuf {
-            let dir = std::env::temp_dir()
-                .join(format!("esp_test_{}_{}", std::process::id(), test_name));
+            let dir =
+                std::env::temp_dir().join(format!("esp_test_{}_{}", std::process::id(), test_name));
             let _ = fs::remove_dir_all(&dir);
             let _ = fs::create_dir_all(&dir);
             dir
