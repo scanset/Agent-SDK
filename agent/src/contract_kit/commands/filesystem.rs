@@ -547,8 +547,15 @@ mod tests {
         use std::fs::{self, File};
         use std::io::Write;
 
-        fn create_test_dir() -> std::path::PathBuf {
-            let dir = std::env::temp_dir().join(format!("esp_test_{}", std::process::id()));
+        // Per-test unique directory. Tests in the same module run on
+        // multiple threads of one process, so a shared `<tmp>/esp_test_<pid>`
+        // path races: thread A's `cleanup_test_dir` removes thread B's
+        // working directory mid-test. Suffix with the caller-supplied test
+        // name so every test gets its own scratch space.
+        fn create_test_dir(test_name: &str) -> std::path::PathBuf {
+            let dir = std::env::temp_dir()
+                .join(format!("esp_test_{}_{}", std::process::id(), test_name));
+            let _ = fs::remove_dir_all(&dir);
             let _ = fs::create_dir_all(&dir);
             dir
         }
@@ -559,7 +566,7 @@ mod tests {
 
         #[test]
         fn test_get_metadata_readable_file() {
-            let dir = create_test_dir();
+            let dir = create_test_dir("readable_file");
             let file_path = dir.join("test.txt");
             let mut file = File::create(&file_path).unwrap();
             writeln!(file, "test content").unwrap();
@@ -581,7 +588,7 @@ mod tests {
 
         #[test]
         fn test_get_metadata_directory() {
-            let dir = create_test_dir();
+            let dir = create_test_dir("directory");
             let metadata = get_file_metadata(dir.to_str().unwrap()).unwrap();
 
             assert!(metadata.exists);
@@ -592,7 +599,7 @@ mod tests {
 
         #[test]
         fn test_windows_fields_false_on_unix() {
-            let dir = create_test_dir();
+            let dir = create_test_dir("windows_fields_false");
             let metadata = get_file_metadata(dir.to_str().unwrap()).unwrap();
 
             assert!(!metadata.is_readonly);
